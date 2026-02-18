@@ -8,11 +8,19 @@
 - 保留 **CLI fallback**（在無 GUI 環境可照常使用）
 - 可顯示「**當前記憶體容量**」（Bytes / KB / MB / GB 自動換算）
 - `word_width` 不再限制 4-bit，支援 **1~1024**
-- 盡量維持原本模板與生成流程相容
+- **完全自包含（standalone）**：不讀取任何外部 `.v/.vh` 模板檔
+- 從任意工作目錄啟動都可成功（不受目前 `cwd` 影響）
+- 維持原本生成流程與輸出檔案集合相容
 
 ## 使用方式
 
-在 `hamming1/` 內執行：
+可在任意工作目錄執行（推薦直接指定腳本路徑）：
+
+```bash
+python3 /path/to/Myclawagi/hamming1/memory_compiler.py
+```
+
+或在 `hamming1/` 目錄內執行：
 
 ```bash
 python3 memory_compiler.py
@@ -61,7 +69,7 @@ GUI 主要欄位：
 
 ## 產出內容
 
-會產生/複製原本 `hamming1` 需要的主要檔案：
+會由 `memory_compiler.py` 內建模板直接產生原本 `hamming1` 需要的主要檔案（**不依賴外部模板檔**）：
 - `EPLFFRAM02_spec.vh`
 - `epl_FFRAM02_top_fi.v`
 - `epl_FiWrFail_sub.v`
