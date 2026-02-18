@@ -341,6 +341,98 @@ def build_params(
     }
 
 
+
+
+def generic_row_decode() -> str:
+    return r'''// epl_Row_Decode_sub.v
+`include "EPLFFRAM02_spec.vh"
+
+module epl_Row_Decode_sub (
+           input  wire [`ADDR_AX-1:0]  pAr_i,
+           output reg [`ADDR_AXO-1:0] pArx_o
+       );
+
+integer i;
+always @(*) begin
+    pArx_o = {`ADDR_AXO{1'b0}};
+    for (i = 0; i < `ROW; i = i + 1)
+        if (pAr_i == i[`ADDR_AX-1:0])
+            pArx_o[i] = 1'b1;
+end
+
+endmodule
+'''
+
+
+def build_memory_array_module(params: dict) -> str:
+    row = params["word"] // params["mux"]
+    col = (params["word_width"] + params["ecc_width"]) * params["mux"]
+
+    lines = []
+    lines.append('// epl_Memory_Array_sub.v')
+    lines.append('`include "EPLFFRAM02_spec.vh"')
+    lines.append('')
+    lines.append('module epl_Memory_Array_sub (')
+    lines.append('           input  wire [`COLUMN-1:0]   pWe_i,')
+    lines.append('           input  wire [`COLUMN-1:0]   pDi_i,')
+    lines.append('           input  wire [`ROW-1:0]      pWl_i,')
+    lines.append('           output reg [`COLUMN-1:0]    pDto_o,')
+    lines.append('           output reg                  pRead01_o,')
+    lines.append('           input  wire                 pClk_i,')
+    lines.append('           input  wire                 pRead0_i,')
+    lines.append('           input  wire                 nRst_i,')
+    lines.append('           input  wire [`ADDR_AYO-1:0]  pAcy1_i,')
+    lines.append('           output reg [`ADDR_AYO-1:0]  pAcy2_o')
+    lines.append('       );')
+    lines.append('')
+    lines.append('wire   [`TOTAL-1 : 0] pDtoc_w;')
+    lines.append('')
+
+    bit = 0
+    for r in range(row):
+        lines.append(f'// Row{r} (WL[{r}])')
+        for c in range(col):
+            lines.append(
+                f'epl_Ffbit_n_sub Bit_{bit} ( .pClk_i(pClk_i), .nRst_i(nRst_i), .pWec_i(pWl_i[{r}] & pWe_i[{c}]), .pDic_i(pDi_i[{c}]), .pDtoc_o(pDtoc_w[{bit}]) );'
+            )
+            bit += 1
+        lines.append('')
+
+    lines.append('reg [`COLUMN-1:0] pDataout0_r;')
+    lines.append('always @(*)')
+    lines.append('begin')
+    lines.append("    pDataout0_r = {`COLUMN{1'b0}};")
+    lines.append("    if (pWl_i != {`ROW{1'b0}}) begin")
+    lines.append('        integer rr, cc;')
+    lines.append('        for (rr = 0; rr < `ROW; rr = rr + 1) begin')
+    lines.append('            if (pWl_i[rr]) begin')
+    lines.append('                for (cc = 0; cc < `COLUMN; cc = cc + 1)')
+    lines.append('                    pDataout0_r[cc] = pDtoc_w[rr*`COLUMN + cc];')
+    lines.append('            end')
+    lines.append('        end')
+    lines.append('    end')
+    lines.append('end')
+    lines.append('')
+    lines.append('always @(posedge pClk_i or negedge nRst_i)')
+    lines.append('begin')
+    lines.append('    if (!nRst_i)')
+    lines.append('    begin')
+    lines.append("        pDto_o    <= {`COLUMN{1'b0}};")
+    lines.append("        pRead01_o <= 1'b0;")
+    lines.append("        pAcy2_o   <= {`ADDR_AYO{1'b0}};")
+    lines.append('    end')
+    lines.append('    else')
+    lines.append('    begin')
+    lines.append('        pDto_o    <= pDataout0_r;')
+    lines.append('        pRead01_o <= pRead0_i;')
+    lines.append('        pAcy2_o   <= pAcy1_i;')
+    lines.append('    end')
+    lines.append('end')
+    lines.append('')
+    lines.append('endmodule')
+    lines.append('')
+    return "\n".join(lines)
+
 def compile_output(params: dict) -> Path:
     out_root = Path(params["output_root"]).expanduser().resolve()
     out_dir = out_root / params["subfolder"] if params["subfolder"].strip() else out_root
@@ -348,6 +440,10 @@ def compile_output(params: dict) -> Path:
 
     for name, content in TEMPLATE_CONTENTS.items():
         (out_dir / name).write_text(content, encoding="utf-8")
+
+    # scale row depth with WORD/MUX for non-default configs
+    (out_dir / "epl_Row_Decode_sub.v").write_text(generic_row_decode(), encoding="utf-8")
+    (out_dir / "epl_Memory_Array_sub.v").write_text(build_memory_array_module(params), encoding="utf-8")
 
     # Derived mask with module enable switches
     wf_word = params["wf_word_mask_int"] if params["enable_wf"] else 0
