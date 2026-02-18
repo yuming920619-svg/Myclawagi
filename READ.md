@@ -1,0 +1,1 @@
+具備錯誤更正碼的Memory Marco
