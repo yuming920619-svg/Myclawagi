@@ -6,7 +6,7 @@
 - fault injection 機制（可控制注入時機/位址/bit mask)
 
 ## Features
-- [x] ECC scheme: [SEC/BCH/]
+- [x] ECC scheme: [SEC/BCH]
 - [x] Error injection: [single-bit / multi-bit]
 - [x] Simulator: [iverilog] / [VCS] (optional)
 - [x] Waveform support: VCD/FSDB (optional)
