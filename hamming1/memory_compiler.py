@@ -2,12 +2,13 @@
 """
 單檔 Memory Compiler (hamming1)
 - 盡量重用 hamming1 現有檔案
-- 透過互動式 CLI 讓使用者修改參數
-- 一鍵輸出原本多檔案
+- 提供 Tkinter GUI（可直接打字）
+- 保留 CLI fallback（互動式問答）
 """
 
 from __future__ import annotations
 
+import argparse
 import math
 import re
 import shutil
@@ -95,6 +96,23 @@ def calc_ecc_width(word_width: int, enable_ecc: bool) -> int:
     while (1 << r) < (word_width + r + 1):
         r += 1
     return r
+
+
+def human_readable_bytes(size_bytes: int) -> str:
+    units = ["Bytes", "KB", "MB", "GB"]
+    size = float(size_bytes)
+    idx = 0
+    while size >= 1024 and idx < len(units) - 1:
+        size /= 1024
+        idx += 1
+    if idx == 0:
+        return f"{int(size)} {units[idx]}"
+    return f"{size:.2f} {units[idx]}"
+
+
+def calc_capacity_bytes(word: int, tword_width: int) -> int:
+    total_bits = word * tword_width
+    return (total_bits + 7) // 8
 
 
 def build_spec(params: dict) -> str:
@@ -274,6 +292,56 @@ endmodule
 """
 
 
+def build_params(
+    *,
+    word: int,
+    word_width: int,
+    mux: int,
+    fault: int,
+    wf_word_mask: str,
+    rd_word_mask: str,
+    wf_bit_mask: str,
+    rd_bit_mask: str,
+    enable_ecc: bool,
+    enable_wf: bool,
+    enable_rd: bool,
+    output_root: str,
+    subfolder: str,
+) -> dict:
+    if word <= 0 or word & (word - 1):
+        raise ValueError("word 必須是 2 的次方")
+    if mux <= 0 or mux & (mux - 1):
+        raise ValueError("mux 必須是 2 的次方")
+    if word % mux != 0:
+        raise ValueError("word 必須可被 mux 整除")
+    if not (1 <= word_width <= 1024):
+        raise ValueError("word_width 必須是 1~1024 的整數")
+    if fault <= 0:
+        raise ValueError("FAULT 必須 > 0")
+
+    ecc_width = calc_ecc_width(word_width, enable_ecc)
+    tword_width = word_width + ecc_width
+
+    return {
+        "word": word,
+        "word_width": word_width,
+        "mux": mux,
+        "fault": fault,
+        "ecc_width": ecc_width,
+        "tword_width": tword_width,
+        "wf_word_mask_int": parse_mask(wf_word_mask, word),
+        "rd_word_mask_int": parse_mask(rd_word_mask, word),
+        "wf_bit_mask_int": parse_mask(wf_bit_mask, tword_width),
+        "rd_bit_mask_int": parse_mask(rd_bit_mask, tword_width),
+        "enable_ecc": enable_ecc,
+        "enable_wf": enable_wf,
+        "enable_rd": enable_rd,
+        "output_root": output_root,
+        "subfolder": subfolder.strip(),
+        "capacity_bytes": calc_capacity_bytes(word, tword_width),
+    }
+
+
 def compile_output(params: dict) -> Path:
     out_root = Path(params["output_root"]).expanduser().resolve()
     out_dir = out_root / params["subfolder"] if params["subfolder"].strip() else out_root
@@ -314,78 +382,166 @@ def compile_output(params: dict) -> Path:
 
 
 def read_params_from_cli() -> dict:
-    print("=== hamming1 Memory Compiler ===")
-    print("提示：目前模板原始版本是 WORD=16, WORD_WIDTH=4, MUX=2。")
+    print("=== hamming1 Memory Compiler (CLI) ===")
+    print("提示：已支援 GUI，若在無圖形環境會自動 fallback 到 CLI。")
 
-    word = int(ask("word 數", str(DEFAULTS["word"])))
-    word_width = int(ask("word 寬度", str(DEFAULTS["word_width"])))
-    mux = int(ask("mux 數量", str(DEFAULTS["mux"])))
-    fault = int(ask("FAULT 寬度", str(DEFAULTS["fault"])))
+    params = build_params(
+        word=int(ask("word 數", str(DEFAULTS["word"]))),
+        word_width=int(ask("word 寬度", str(DEFAULTS["word_width"]))),
+        mux=int(ask("mux 數量", str(DEFAULTS["mux"]))),
+        fault=int(ask("FAULT 寬度", str(DEFAULTS["fault"]))),
+        wf_word_mask=ask("WF word mask (支援 0x/0b/十進位)", DEFAULTS["wf_word_mask"]),
+        rd_word_mask=ask("RD word mask (支援 0x/0b/十進位)", DEFAULTS["rd_word_mask"]),
+        wf_bit_mask=ask("WF bit mask (支援 0x/0b/十進位)", DEFAULTS["wf_bit_mask"]),
+        rd_bit_mask=ask("RD bit mask (支援 0x/0b/十進位)", DEFAULTS["rd_bit_mask"]),
+        enable_ecc=ask_bool("是否啟用 ECC", DEFAULTS["enable_ecc"]),
+        enable_wf=ask_bool("是否啟用 WF 故障注入模組", DEFAULTS["enable_wf"]),
+        enable_rd=ask_bool("是否啟用 RD 故障注入模組", DEFAULTS["enable_rd"]),
+        output_root=ask("輸出根目錄", DEFAULTS["output_root"]),
+        subfolder=ask("輸出子資料夾名稱（留空代表不使用）", DEFAULTS["subfolder"]),
+    )
 
-    wf_word_mask = ask("WF word mask (支援 0x/0b/十進位)", DEFAULTS["wf_word_mask"])
-    rd_word_mask = ask("RD word mask (支援 0x/0b/十進位)", DEFAULTS["rd_word_mask"])
-    wf_bit_mask = ask("WF bit mask (支援 0x/0b/十進位)", DEFAULTS["wf_bit_mask"])
-    rd_bit_mask = ask("RD bit mask (支援 0x/0b/十進位)", DEFAULTS["rd_bit_mask"])
-
-    enable_ecc = ask_bool("是否啟用 ECC", DEFAULTS["enable_ecc"])
-    enable_wf = ask_bool("是否啟用 WF 故障注入模組", DEFAULTS["enable_wf"])
-    enable_rd = ask_bool("是否啟用 RD 故障注入模組", DEFAULTS["enable_rd"])
-
-    output_root = ask("輸出根目錄", DEFAULTS["output_root"])
-    subfolder = ask("輸出子資料夾名稱（留空代表不使用）", DEFAULTS["subfolder"])
-
-    if word <= 0 or word & (word - 1):
-        raise ValueError("word 必須是 2 的次方")
-    if mux <= 0 or mux & (mux - 1):
-        raise ValueError("mux 必須是 2 的次方")
-    if word % mux != 0:
-        raise ValueError("word 必須可被 mux 整除")
-    if word_width <= 0:
-        raise ValueError("word_width 必須 > 0")
-    if fault <= 0:
-        raise ValueError("FAULT 必須 > 0")
-
-    ecc_width = calc_ecc_width(word_width, enable_ecc)
-    tword_width = word_width + ecc_width
-
-    if enable_ecc and word_width != 4:
+    if params["enable_ecc"] and params["word_width"] != 4:
         print("[警告] 現有 ECC RTL 是針對 4-bit data；已保留原寫法，非 4-bit 可能需自行擴充 ECC 模組。")
+    print(f"[容量] 總容量：{human_readable_bytes(params['capacity_bytes'])}")
+    return params
 
-    return {
-        "word": word,
-        "word_width": word_width,
-        "mux": mux,
-        "fault": fault,
-        "ecc_width": ecc_width,
-        "tword_width": tword_width,
-        "wf_word_mask_int": parse_mask(wf_word_mask, word),
-        "rd_word_mask_int": parse_mask(rd_word_mask, word),
-        "wf_bit_mask_int": parse_mask(wf_bit_mask, tword_width),
-        "rd_bit_mask_int": parse_mask(rd_bit_mask, tword_width),
-        "enable_ecc": enable_ecc,
-        "enable_wf": enable_wf,
-        "enable_rd": enable_rd,
-        "output_root": output_root,
-        "subfolder": subfolder.strip(),
-    }
+
+def run_gui() -> bool:
+    try:
+        import tkinter as tk
+        from tkinter import messagebox
+    except Exception:
+        return False
+
+    try:
+        root = tk.Tk()
+    except Exception:
+        return False
+
+    root.title("hamming1 Memory Compiler")
+
+    fields = {}
+    bools = {}
+
+    def add_entry(row: int, label: str, key: str, default: str):
+        tk.Label(root, text=label, anchor="w").grid(row=row, column=0, sticky="w", padx=6, pady=3)
+        e = tk.Entry(root, width=48)
+        e.insert(0, default)
+        e.grid(row=row, column=1, sticky="we", padx=6, pady=3)
+        fields[key] = e
+
+    def add_check(row: int, label: str, key: str, default: bool):
+        var = tk.BooleanVar(value=default)
+        tk.Checkbutton(root, text=label, variable=var).grid(row=row, column=1, sticky="w", padx=6, pady=3)
+        bools[key] = var
+
+    add_entry(0, "word（2 的次方）", "word", str(DEFAULTS["word"]))
+    add_entry(1, "word_width（1~1024）", "word_width", str(DEFAULTS["word_width"]))
+    add_entry(2, "mux（2 的次方）", "mux", str(DEFAULTS["mux"]))
+    add_entry(3, "FAULT", "fault", str(DEFAULTS["fault"]))
+    add_entry(4, "WF word mask", "wf_word_mask", DEFAULTS["wf_word_mask"])
+    add_entry(5, "RD word mask", "rd_word_mask", DEFAULTS["rd_word_mask"])
+    add_entry(6, "WF bit mask", "wf_bit_mask", DEFAULTS["wf_bit_mask"])
+    add_entry(7, "RD bit mask", "rd_bit_mask", DEFAULTS["rd_bit_mask"])
+    add_entry(8, "輸出根目錄", "output_root", DEFAULTS["output_root"])
+    add_entry(9, "輸出子資料夾", "subfolder", DEFAULTS["subfolder"])
+
+    add_check(10, "啟用 ECC", "enable_ecc", DEFAULTS["enable_ecc"])
+    add_check(11, "啟用 WF 故障注入", "enable_wf", DEFAULTS["enable_wf"])
+    add_check(12, "啟用 RD 故障注入", "enable_rd", DEFAULTS["enable_rd"])
+
+    capacity_var = tk.StringVar(value="總容量：-")
+    tk.Label(root, textvariable=capacity_var, fg="#1f5aa6").grid(row=13, column=0, columnspan=2, sticky="w", padx=6, pady=6)
+
+    status_var = tk.StringVar(value="")
+    tk.Label(root, textvariable=status_var, fg="#2f7d32").grid(row=14, column=0, columnspan=2, sticky="w", padx=6, pady=3)
+
+    def collect_params() -> dict:
+        return build_params(
+            word=int(fields["word"].get().strip()),
+            word_width=int(fields["word_width"].get().strip()),
+            mux=int(fields["mux"].get().strip()),
+            fault=int(fields["fault"].get().strip()),
+            wf_word_mask=fields["wf_word_mask"].get().strip(),
+            rd_word_mask=fields["rd_word_mask"].get().strip(),
+            wf_bit_mask=fields["wf_bit_mask"].get().strip(),
+            rd_bit_mask=fields["rd_bit_mask"].get().strip(),
+            enable_ecc=bools["enable_ecc"].get(),
+            enable_wf=bools["enable_wf"].get(),
+            enable_rd=bools["enable_rd"].get(),
+            output_root=fields["output_root"].get().strip(),
+            subfolder=fields["subfolder"].get().strip(),
+        )
+
+    def refresh_capacity(*_):
+        try:
+            p = collect_params()
+            capacity_var.set(f"總容量：{human_readable_bytes(p['capacity_bytes'])}")
+            status_var.set("")
+        except Exception as exc:
+            capacity_var.set("總容量：-")
+            status_var.set(f"參數尚未有效：{exc}")
+
+    def do_compile():
+        try:
+            p = collect_params()
+            out_dir = compile_output(p)
+            msg = f"完成輸出：{out_dir}\n總容量：{human_readable_bytes(p['capacity_bytes'])}"
+            if p["enable_ecc"] and p["word_width"] != 4:
+                msg += "\n注意：ECC RTL 原本針對 4-bit。"
+            status_var.set(f"完成：{out_dir}")
+            messagebox.showinfo("Memory Compiler", msg)
+        except Exception as exc:
+            status_var.set(f"失敗：{exc}")
+            messagebox.showerror("Memory Compiler", str(exc))
+
+    for e in fields.values():
+        e.bind("<KeyRelease>", refresh_capacity)
+    for var in bools.values():
+        var.trace_add("write", refresh_capacity)
+
+    tk.Button(root, text="更新容量", command=refresh_capacity).grid(row=15, column=0, sticky="w", padx=6, pady=8)
+    tk.Button(root, text="生成", command=do_compile, bg="#1f5aa6", fg="white").grid(row=15, column=1, sticky="e", padx=6, pady=8)
+
+    root.columnconfigure(1, weight=1)
+    refresh_capacity()
+    root.mainloop()
+    return True
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="hamming1 memory compiler")
+    parser.add_argument("--cli", action="store_true", help="強制使用 CLI")
+    parser.add_argument("--gui", action="store_true", help="強制使用 GUI")
+    args = parser.parse_args()
+
     try:
+        gui_used = False
+        if not args.cli:
+            gui_used = run_gui()
+            if args.gui and not gui_used:
+                raise RuntimeError("無法啟動 GUI（可能無 DISPLAY 或缺少 tkinter）")
+
+        if gui_used:
+            return
+
         params = read_params_from_cli()
         out_dir = compile_output(params)
+
+        print("\n[完成] 已輸出到:", out_dir)
+        print("主要設定：")
+        print(f"- WORD={params['word']}, WORD_WIDTH={params['word_width']}, MUX={params['mux']}, FAULT={params['fault']}")
+        print(f"- ECC={'ON' if params['enable_ecc'] else 'OFF'}, WF={'ON' if params['enable_wf'] else 'OFF'}, RD={'ON' if params['enable_rd'] else 'OFF'}")
+        print(f"- WF word mask={fmt_mask_hex(params['wf_word_mask_int'], params['word'])}")
+        print(f"- RD word mask={fmt_mask_hex(params['rd_word_mask_int'], params['word'])}")
+        print(f"- WF bit mask={fmt_mask_bin(params['wf_bit_mask_int'], params['tword_width'])}")
+        print(f"- RD bit mask={fmt_mask_bin(params['rd_bit_mask_int'], params['tword_width'])}")
+        print(f"- 總容量：{human_readable_bytes(params['capacity_bytes'])}")
+
     except Exception as exc:
         print(f"[失敗] {exc}")
         raise SystemExit(1)
-
-    print("\n[完成] 已輸出到:", out_dir)
-    print("主要設定：")
-    print(f"- WORD={params['word']}, WORD_WIDTH={params['word_width']}, MUX={params['mux']}, FAULT={params['fault']}")
-    print(f"- ECC={'ON' if params['enable_ecc'] else 'OFF'}, WF={'ON' if params['enable_wf'] else 'OFF'}, RD={'ON' if params['enable_rd'] else 'OFF'}")
-    print(f"- WF word mask={fmt_mask_hex(params['wf_word_mask_int'], params['word'])}")
-    print(f"- RD word mask={fmt_mask_hex(params['rd_word_mask_int'], params['word'])}")
-    print(f"- WF bit mask={fmt_mask_bin(params['wf_bit_mask_int'], params['tword_width'])}")
-    print(f"- RD bit mask={fmt_mask_bin(params['rd_bit_mask_int'], params['tword_width'])}")
 
 
 if __name__ == "__main__":
