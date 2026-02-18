@@ -8,6 +8,7 @@
 - 保留 **CLI fallback**（在無 GUI 環境可照常使用）
 - 可顯示「**當前記憶體容量**」（Bytes / KB / MB / GB 自動換算）
 - `word_width` 不再限制 4-bit，支援 **1~1024**
+- ECC 依 Hamming 規則自動計算 parity 數（最小 r 滿足 `2^r >= m + r + 1`）並生成 encoder/decoder
 - **完全自包含（standalone）**：不讀取任何外部 `.v/.vh` 模板檔
 - 從任意工作目錄啟動都可成功（不受目前 `cwd` 影響）
 - 維持原本生成流程與輸出檔案集合相容

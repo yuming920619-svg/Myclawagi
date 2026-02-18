@@ -153,7 +153,8 @@ def patch_top(top_text: str, params: dict) -> str:
     top_text = re.sub(r"`define FI_WF_BIT_MASK\s+[^\n]+", f"`define FI_WF_BIT_MASK  {fmt_mask_bin(params['wf_bit_mask_int'], params['tword_width'])}", top_text)
     top_text = re.sub(r"`define FI_RD_WORD_MASK\s+[^\n]+", f"`define FI_RD_WORD_MASK {fmt_mask_hex(params['rd_word_mask_int'], params['word'])}", top_text)
     top_text = re.sub(r"`define FI_RD_BIT_MASK\s+[^\n]+", f"`define FI_RD_BIT_MASK  {fmt_mask_bin(params['rd_bit_mask_int'], params['tword_width'])}", top_text)
-    top_text = re.sub(r"`define FI_WF_FORCE_ZERO\s+[^\n]+", "`define FI_WF_FORCE_ZERO 1'b1", top_text)
+    # Use bit-flip mode by default so masked addresses always inject an error.
+    top_text = re.sub(r"`define FI_WF_FORCE_ZERO\s+[^\n]+", "`define FI_WF_FORCE_ZERO 1'b0", top_text)
     return top_text
 
 
@@ -433,6 +434,144 @@ def build_memory_array_module(params: dict) -> str:
     lines.append('')
     return "\n".join(lines)
 
+
+
+def build_hamming_ecc_encoder() -> str:
+    return """// epl_ecc_encoder.v (generated Hamming encoder)
+`include "EPLFFRAM02_spec.vh"
+
+module epl_ecc_encoder (
+           input                     pCLK_i,
+           input                     nRST_i,
+           input                     pWRITE_i,
+           input  [`WORD_WIDTH-1:0]  pDATA_i,
+           output [`TWORD_WIDTH-1:0] pCODEWORD_o,
+           output reg [6:0]          pCcodeword_o,
+           output                    pVALIDE_o
+       );
+
+reg [`TWORD_WIDTH-1:0] pCodewordCalc_r;
+integer pos, di, pj;
+reg parity;
+
+always @(*)
+begin
+    pCodewordCalc_r = {`TWORD_WIDTH{1'b0}};
+    di = 0;
+
+    // 1) Place data bits into non-parity positions (positions are 1-based)
+    for (pos = 1; pos <= `TWORD_WIDTH; pos = pos + 1)
+    begin
+        if ((pos & (pos - 1)) != 0)
+        begin
+            if (di < `WORD_WIDTH)
+                pCodewordCalc_r[pos-1] = pDATA_i[di];
+            di = di + 1;
+        end
+    end
+
+    // 2) Compute parity bits at 2^k positions
+    for (pj = 0; pj < `ECC_WIDTH; pj = pj + 1)
+    begin
+        parity = 1'b0;
+        for (pos = 1; pos <= `TWORD_WIDTH; pos = pos + 1)
+        begin
+            if ((pos & (1 << pj)) != 0)
+                parity = parity ^ pCodewordCalc_r[pos-1];
+        end
+        pCodewordCalc_r[(1 << pj)-1] = parity;
+    end
+end
+
+assign pVALIDE_o   = pWRITE_i;
+assign pCODEWORD_o = (pWRITE_i) ? pCodewordCalc_r : {`TWORD_WIDTH{1'b0}};
+
+always @(posedge pCLK_i or negedge nRST_i)
+begin
+    if (!nRST_i)
+        pCcodeword_o <= 7'b0;
+    else if (pVALIDE_o)
+        pCcodeword_o <= pCODEWORD_o[6:0];
+    else
+        pCcodeword_o <= 7'b0;
+end
+
+endmodule
+"""
+
+
+def build_hamming_ecc_decoder() -> str:
+    return """// epl_ecc_decoder.v (generated Hamming decoder)
+`include "EPLFFRAM02_spec.vh"
+
+module epl_ecc_decoder (
+           input  [`TWORD_WIDTH-1:0] pPARITYDATA_i,
+           input                     pREAD_i,
+           output reg [`WORD_WIDTH-1:0] pDATA_o,
+           input                     pCLK_i,
+           input                     nRST_i,
+           output reg                pERROR_o
+       );
+
+reg [`TWORD_WIDTH-1:0] pCodewordFix_r;
+reg [`ECC_WIDTH-1:0]   pSyndrome_w;
+integer pos, pj, di;
+reg parity;
+integer err_pos;
+
+always @(*)
+begin
+    // 1) syndrome calculation
+    for (pj = 0; pj < `ECC_WIDTH; pj = pj + 1)
+    begin
+        parity = 1'b0;
+        for (pos = 1; pos <= `TWORD_WIDTH; pos = pos + 1)
+        begin
+            if ((pos & (1 << pj)) != 0)
+                parity = parity ^ pPARITYDATA_i[pos-1];
+        end
+        pSyndrome_w[pj] = parity;
+    end
+
+    // 2) single-bit correction
+    pCodewordFix_r = pPARITYDATA_i;
+    err_pos = pSyndrome_w;
+    if ((err_pos >= 1) && (err_pos <= `TWORD_WIDTH))
+        pCodewordFix_r[err_pos-1] = ~pCodewordFix_r[err_pos-1];
+end
+
+always @(posedge pCLK_i or negedge nRST_i)
+begin
+    if (!nRST_i)
+    begin
+        pDATA_o  <= {`WORD_WIDTH{1'b0}};
+        pERROR_o <= 1'b0;
+    end
+    else if (pREAD_i)
+    begin
+        di = 0;
+        pDATA_o = {`WORD_WIDTH{1'b0}};
+        for (pos = 1; pos <= `TWORD_WIDTH; pos = pos + 1)
+        begin
+            if ((pos & (pos - 1)) != 0)
+            begin
+                if (di < `WORD_WIDTH)
+                    pDATA_o[di] = pCodewordFix_r[pos-1];
+                di = di + 1;
+            end
+        end
+        pERROR_o <= (pSyndrome_w != {`ECC_WIDTH{1'b0}});
+    end
+    else
+    begin
+        pDATA_o  <= {`WORD_WIDTH{1'b0}};
+        pERROR_o <= 1'b0;
+    end
+end
+
+endmodule
+"""
+
 def compile_output(params: dict) -> Path:
     out_root = Path(params["output_root"]).expanduser().resolve()
     out_dir = out_root / params["subfolder"] if params["subfolder"].strip() else out_root
@@ -472,6 +611,9 @@ def compile_output(params: dict) -> Path:
     if not params["enable_ecc"]:
         (out_dir / "epl_ecc_encoder.v").write_text(ecc_encoder_passthrough(), encoding="utf-8")
         (out_dir / "epl_ecc_decoder.v").write_text(ecc_decoder_passthrough(), encoding="utf-8")
+    else:
+        (out_dir / "epl_ecc_encoder.v").write_text(build_hamming_ecc_encoder(), encoding="utf-8")
+        (out_dir / "epl_ecc_decoder.v").write_text(build_hamming_ecc_decoder(), encoding="utf-8")
 
     return out_dir
 
@@ -496,8 +638,8 @@ def read_params_from_cli() -> dict:
         subfolder=ask("輸出子資料夾名稱（留空代表不使用）", DEFAULTS["subfolder"]),
     )
 
-    if params["enable_ecc"] and params["word_width"] != 4:
-        print("[警告] 現有 ECC RTL 是針對 4-bit data；已保留原寫法，非 4-bit 可能需自行擴充 ECC 模組。")
+    if params["enable_ecc"]:
+        print(f"[資訊] ECC 使用 Hamming 規則自動生成（m={params['word_width']}, r={params['ecc_width']}, n={params['tword_width']}）。")
     print(f"[容量] 總容量：{human_readable_bytes(params['capacity_bytes'])}")
     return params
 
@@ -583,8 +725,8 @@ def run_gui() -> bool:
             p = collect_params()
             out_dir = compile_output(p)
             msg = f"完成輸出：{out_dir}\n總容量：{human_readable_bytes(p['capacity_bytes'])}"
-            if p["enable_ecc"] and p["word_width"] != 4:
-                msg += "\n注意：ECC RTL 原本針對 4-bit。"
+            if p["enable_ecc"]:
+                msg += f"\nECC：Hamming 自動生成 (m={p['word_width']}, r={p['ecc_width']}, n={p['tword_width']})"
             status_var.set(f"完成：{out_dir}")
             messagebox.showinfo("Memory Compiler", msg)
         except Exception as exc:
