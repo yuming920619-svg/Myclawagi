@@ -43,3 +43,26 @@ Docker build fails on Apple Silicon due to platform mismatch
 
 ---
 
+
+## [LRN-20260318-001] correction
+
+**Logged**: 2026-03-18T09:32:00Z
+**Priority**: medium
+**Status**: pending
+**Area**: docs
+
+### Summary
+When the user asks about gpt-5-mini / gpt-5-nano, do not answer with gpt-5.4-mini / gpt-5.4-nano. Confirm the exact model family first.
+
+### Details
+The user asked for pricing and pros/cons of gpt-5-mini and gpt-5-nano. I incorrectly answered with gpt-5.4-mini and gpt-5.4-nano information. This happened because I mixed the OpenClaw catalog naming (gpt-5-mini / gpt-5-nano) with newer OpenAI docs that mention gpt-5.4-mini / gpt-5.4-nano.
+
+### Suggested Action
+Before answering model/pricing questions, restate the exact model IDs requested and verify the provider naming in current docs/catalog. If there is a naming mismatch between OpenClaw and provider docs, call it out explicitly instead of assuming they are interchangeable.
+
+### Metadata
+- Source: user_feedback
+- Related Files: /home/node/.openclaw/workspace/.learnings/LEARNINGS.md
+- Tags: models, pricing, correction, openai, openclaw
+
+---
