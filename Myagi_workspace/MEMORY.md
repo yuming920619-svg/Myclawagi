@@ -9,6 +9,8 @@
 - Token 策略：偏好訂閱優先（GPT 訂閱 → Claude 訂閱），兩邊都受限時再退回 OpenAI API key；省額度優先降工具回合與上下文長度
 - 偏好「踩坑自動提醒」流程：當我偵測到本次任務可能踩坑時，先主動詢問是否記錄；僅在使用者明確同意後寫入 pitfall-loop
 - 若指定安裝某個 ClawHub skill，偏好完整安裝不要遺漏；若 `clawhub install` 受 rate limit 或其他限制，可接受改用手動下載/解包安裝
+- 對「專題討論」評分草稿流程，GitHub 同步屬於固定流程：生成可用稿後，預設更新 `Myclawagi/Special Topic Discussion/` 並推送，除非使用者明確要求先不要 push
+- 若同一天的專題討論草稿需要提供給不同人或做不同措辭版本，偏好另存為獨立檔案（如「第二版」），不要覆蓋原稿
 
 ## Vega（我）
 - 2026-02-17 命名為 Atlas 🛰️
@@ -19,7 +21,7 @@
 - OpenClaw 版本：`2026.3.13`（2026-03-16 確認；歷程：2026.3.8 → 2026.3.11 → 2026.3.13）
 - Workspace 已採用 proactive-agent 的「中整合」：使用 `SESSION-STATE.md`、`notes/open-loops.md`、`notes/areas/recurring-patterns.md` 與輕量 heartbeat 維護；不啟用 full WAL、`memory/working-buffer.md`、full proactive tracking
 - 預設模型：openai-codex/gpt-5.4
-- 現行模型容災（方案 B）：`openai-codex/gpt-5.4` → `anthropic/claude-opus-4-6` → `anthropic/claude-sonnet-4-6` → `anthropic/claude-sonnet-4-5` → `openai/gpt-5.4`；策略為訂閱優先，API key 最後 fallback
+- 現行模型容災：`openai-codex/gpt-5.4` → `anthropic/claude-opus-4-6` → `anthropic/claude-sonnet-4-6` → `openai/gpt-5.4`；使用者已明確決定 **`sonnet-4-6` 就夠，不需要把 `sonnet-4-5` 放進 main fallback**。策略為訂閱優先，API key 最後 fallback
 - OpenClaw 可同時配置 `openai` API key 與 `openai-codex` OAuth / subscription，兩者不互斥；但 `openai-codex/*` 模型不會自動改吃 `openai` API key，若 Codex 認證失效需獨立重新登入
 - 可切換模型：openai-codex/gpt-5.3-codex、openai-codex/gpt-5.4、openai/gpt-5-mini（alias: `gpt-mini`）、anthropic/claude-opus-4-6、anthropic/claude-sonnet-4-5、anthropic/claude-sonnet-4-6
 - Browser 功能已啟用；目前雲端主機未安裝 Chromium/Chrome，因此 `openclaw` 托管瀏覽器暫時無法直接啟動，可改走 Browser Relay 或 Remote CDP
@@ -28,10 +30,10 @@
 - 已建立自我迭代踩坑系統（`skills/pitfall-loop` + `memory/pitfalls.jsonl` + 每週回顧 cron）
 
 ## 記帳系統
-- 架構：CSV 月檔（`expenses/YYYY-MM.csv`）+ 統計腳本 + Excel 產生器
+- 架構：CSV 月檔（`expenses/YYYY-MM.csv`）+ 統計腳本 + 摘要 CSV（`summary.csv`）
 - 已封裝為 skill：`skills/expense-tracker/`
 - 每筆記帳後即時推送摘要到 Telegram reminder bot（account: reminder）
-- 每天 23:30 自動產生 Excel 並 push 到 GitHub `Myclawagi/Expense tracking/`
+- 每天 23:30 自動同步 CSV 到 GitHub `Myclawagi/Expense tracking/`（原始月檔 + `summary.csv`，不再產生 Excel）
 - 分類：餐飲、飲料、交通、日用品、娛樂、學費、服飾、醫療、其他
 
 ## 重要截止日

@@ -17,7 +17,4 @@ Keep entries short.
   - Status: 暫緩；使用者確認目前先不用做。原因是 repo 內既有 BCH 實作有問題，不想直接沿用舊版
   - Revisit trigger: 之後有空、準備投入重設計時，提醒使用者重新啟動此任務
 
-- [ ] 每日 20:00 提醒買洗衣精（直到使用者說買了）
-  - Status: Cron 已啟用（jobId: 98fb4d87-adfa-48f6-afe2-492b2eee0e02），每日 20:00（Asia/Taipei）送 Telegram 提醒
-  - Revisit trigger: 使用者回覆「買了洗衣精」→ 停用/刪除該 cron job
 

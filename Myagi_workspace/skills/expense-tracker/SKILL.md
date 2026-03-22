@@ -9,14 +9,15 @@ description: "個人記帳系統：記錄消費、查詢統計、產生報表。
 
 ```
 expenses/
-├── YYYY-MM.csv      ← 月檔（每月一份）
-├── stats.sh         ← 統計腳本
-├── csv2xlsx.js      ← CSV → Excel 轉換
+├── YYYY-MM.csv       ← 月檔（每月一份）
+├── stats.sh          ← 統計腳本
+├── build-summary.js  ← 產生 GitHub 用摘要 CSV
 └── sync-to-github.sh ← 同步到 GitHub
 ```
 
 - 資料目錄：`/home/node/.openclaw/workspace/expenses/`
 - GitHub 目標：`Myclawagi/Expense tracking/`
+- GitHub 同步內容：原始月檔 CSV + `summary.csv`（不再產生 Excel）
 
 ## CSV 格式
 
