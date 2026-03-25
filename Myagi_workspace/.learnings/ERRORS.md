@@ -4,6 +4,34 @@ Command failures, exceptions, and unexpected behaviors.
 
 ---
 
+## [ERR-20260325-001] rg_missing_in_runtime
+
+**Logged**: 2026-03-25T16:43:00Z
+**Priority**: low
+**Status**: pending
+**Area**: infra
+
+### Summary
+Tried to use `rg` for quick file discovery, but this runtime does not have ripgrep installed.
+
+### Error
+```
+sh: 1: rg: not found
+```
+
+### Context
+- Operation attempted: locate OpenClaw config / LINE-related files with `find ... | rg ...`
+- Runtime fallback was to use `openclaw status --all` and direct file reads instead
+
+### Suggested Fix
+In this workspace runtime, prefer `grep` / `find` / direct known paths unless `rg` availability has been verified.
+
+### Metadata
+- Reproducible: yes
+- Related Files: none
+
+---
+
 ## [ERR-20260312-001] edit_tool_ambiguous_match
 
 **Logged**: 2026-03-12T17:10:00Z
@@ -308,3 +336,33 @@ For multi-step scripts run through `exec`, use `bash -lc` (or avoid `pipefail`) 
 - Related Files: /home/node/.openclaw/workspace/.learnings/ERRORS.md
 
 ---
+
+## [ERR-20260325-003] bundled_line_plugin_crashes_on_2026_3_22
+
+**Logged**: 2026-03-25T16:10:30Z
+**Priority**: high
+**Status**: pending
+**Area**: infra
+
+### Summary
+After upgrading OpenClaw to 2026.3.22, the LINE plugin still fails to load with `TypeError: Cannot redefine property: isSenderAllowed` even after removing the old user-installed `~/.openclaw/extensions/line` copy.
+
+### Error
+```
+[plugins] line failed to load from /app/extensions/line/index.ts: TypeError: Cannot redefine property: isSenderAllowed
+[openclaw] Failed to start CLI: PluginLoadFailureError: plugin load failed: line: TypeError: Cannot redefine property: isSenderAllowed
+```
+
+### Context
+- Initial suspicion was duplicate LINE plugin versions (`~/.openclaw/extensions/line` 2026.2.15 vs `/app/extensions/line` 2026.3.22)
+- Moved the old user-installed LINE plugin out of `~/.openclaw/extensions/` into `/home/node/.openclaw/plugin-backups/_disabled-line-20260325-160946`
+- Retest still failed, which shows the bundled 2026.3.22 LINE plugin itself crashes in this environment
+- Temporary workaround works: create a temp config with `plugins.entries.line.enabled=false`, then CLI/status and Telegram reminder sends succeed normally
+
+### Suggested Fix
+Treat this as an upstream/bundled LINE plugin compatibility issue on 2026.3.22. Temporary local workaround is to disable the LINE plugin in config when CLI access is needed, but that also disables the LINE channel until the plugin is repaired.
+
+### Metadata
+- Reproducible: yes
+- Related Files: /home/node/.openclaw/openclaw.json, /app/extensions/line, /home/node/.openclaw/plugin-backups/_disabled-line-20260325-160946
+

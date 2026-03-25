@@ -9,7 +9,10 @@ Keep this file practical. Put only environment-specific notes here.
 - Direct CDP scripting gotcha: `/json/new` returns page `webSocketDebuggerUrl` with host `127.0.0.1`; when connecting from this workspace, rewrite it to `openclaw-sandbox-browser-posess:9222` or the socket will fail to open
 
 ## Messaging
-- Active channels: Telegram + LINE
+- Active channels: Telegram
+- Reminder bot accountId: `reminder`（自動通知預設走這個）
+- LINE is temporarily disabled after upgrading to OpenClaw `2026.3.22` because the bundled LINE plugin crashes on load (`Cannot redefine property: isSenderAllowed`)
+- Old user-installed LINE plugin was moved to `~/.openclaw/plugin-backups/_disabled-line-20260325-160946`
 - Discord is backup-only for now; valid target ID still missing
 
 ## Self-Improvement
