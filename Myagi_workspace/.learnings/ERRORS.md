@@ -217,3 +217,94 @@ For reminder-bot cron notifications, use isolated jobs with `--message` + `--ann
 - **Notes**: Recreated all three reminder jobs using isolated announce delivery to Telegram reminder bot.
 
 ---
+
+## [ERR-20260323-001] web_search_missing_brave_api_key
+
+**Logged**: 2026-03-23T18:08:30Z
+**Priority**: low
+**Status**: pending
+**Area**: infra
+
+### Summary
+Tried to use `web_search`, but this OpenClaw environment does not currently have a Brave Search API key configured.
+
+### Error
+```
+web_search (brave) needs a Brave Search API key. Run `openclaw configure --section web` to store it, or set BRAVE_API_KEY in the Gateway environment.
+```
+
+### Context
+- Operation attempted: verify current public docs / web info for Claude Code product differences
+- Tool call failed before returning any search results because Brave API credentials were missing
+- Fallback for lightweight doc lookup can be direct `web_fetch` on known URLs when search is unnecessary
+
+### Suggested Fix
+If web search is needed again in this environment, configure Brave Search (`openclaw configure --section web`) or set `BRAVE_API_KEY`; otherwise prefer direct `web_fetch` when the target docs URL is already known.
+
+### Metadata
+- Reproducible: yes
+- Related Files: /home/node/.openclaw/workspace/TOOLS.md
+
+---
+
+## [ERR-20260324-002] remote_browser_target_ws_uses_loopback_host
+
+**Logged**: 2026-03-24T11:33:30Z
+**Priority**: low
+**Status**: resolved
+**Area**: infra
+
+### Summary
+Direct CDP page-target connections to the remote browser sandbox failed because `/json/new` returned a loopback `webSocketDebuggerUrl` (`ws://127.0.0.1/...`) that is not reachable from this workspace.
+
+### Error
+```
+Error: websocket open failed
+```
+
+### Context
+- Operation attempted: perform a real browser action test against the configured remote browser sandbox
+- Initial approach used the page target's `webSocketDebuggerUrl` exactly as returned by the sandbox
+- The target metadata used `127.0.0.1`, which points at the browser container itself instead of the service hostname visible from this workspace
+
+### Suggested Fix
+When scripting CDP directly against this sandbox, rewrite the target websocket host from `127.0.0.1` to `openclaw-sandbox-browser-posess:9222` before opening the socket.
+
+### Metadata
+- Reproducible: yes
+- Related Files: /home/node/.openclaw/workspace/TOOLS.md
+
+### Resolution
+- **Resolved**: 2026-03-24T11:35:00Z
+- **Notes**: Rewriting the target websocket host to `openclaw-sandbox-browser-posess:9222` allowed successful navigation to `https://example.com`, title extraction, and screenshot capture.
+
+---
+
+## [ERR-20260325-001] sh_pipefail_not_supported
+
+**Logged**: 2026-03-25T03:00:00Z
+**Priority**: low
+**Status**: pending
+**Area**: infra
+
+### Summary
+Tried to run a shell script with `set -euo pipefail` via `exec`, but the default `/bin/sh` in this runtime does not support `pipefail`.
+
+### Error
+```
+sh: 1: set: Illegal option -o pipefail
+```
+
+### Context
+- Operation attempted: cron-driven workspace sync script executed through `exec`
+- Assumed bash-style shell options were available under `/bin/sh`
+- The fix is to invoke `bash -lc '...'` explicitly when `pipefail` is needed
+
+### Suggested Fix
+For multi-step scripts run through `exec`, use `bash -lc` (or avoid `pipefail`) instead of assuming `/bin/sh` supports bash options.
+
+### Metadata
+- Reproducible: yes
+- Related Files: /home/node/.openclaw/workspace/.learnings/ERRORS.md
+
+---

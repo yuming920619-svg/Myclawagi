@@ -11,6 +11,7 @@
 - 若指定安裝某個 ClawHub skill，偏好完整安裝不要遺漏；若 `clawhub install` 受 rate limit 或其他限制，可接受改用手動下載/解包安裝
 - 對「專題討論」評分草稿流程，GitHub 同步屬於固定流程：生成可用稿後，預設更新 `Myclawagi/Special Topic Discussion/` 並推送，除非使用者明確要求先不要 push
 - 若同一天的專題討論草稿需要提供給不同人或做不同措辭版本，偏好另存為獨立檔案（如「第二版」），不要覆蓋原稿
+- 對記帳流程，使用者明確要求：**每次記帳後都要同步發送 Telegram reminder bot 通知**；不能只完成本地 CSV 記錄與聊天回覆
 
 ## Vega（我）
 - 2026-02-17 命名為 Atlas 🛰️

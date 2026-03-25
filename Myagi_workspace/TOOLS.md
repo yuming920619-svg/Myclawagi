@@ -6,6 +6,7 @@ Keep this file practical. Put only environment-specific notes here.
 - Remote browser sandbox is available via profile `remote`
 - Current CDP endpoint: `http://openclaw-sandbox-browser-posess:9222`
 - Cloud host does **not** have local Chromium/Chrome; prefer Remote CDP / Browser Relay over expecting a local managed browser
+- Direct CDP scripting gotcha: `/json/new` returns page `webSocketDebuggerUrl` with host `127.0.0.1`; when connecting from this workspace, rewrite it to `openclaw-sandbox-browser-posess:9222` or the socket will fail to open
 
 ## Messaging
 - Active channels: Telegram + LINE
@@ -18,8 +19,3 @@ Keep this file practical. Put only environment-specific notes here.
   - `FEATURE_REQUESTS.md`
 - `self-improvement` hook is installed and ready
 
-## Add Here Later
-- SSH hosts / aliases
-- Preferred TTS voice IDs
-- Device IDs / node names / camera labels
-- Any local shortcuts worth keeping in prompt context

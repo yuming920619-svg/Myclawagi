@@ -70,7 +70,7 @@ Before answering model/pricing questions, restate the exact model IDs requested 
 ## [LRN-20260319-002] correction
 
 **Logged**: 2026-03-19T11:01:18Z
-**Priority**: medium
+**Priority**: high
 **Status**: pending
 **Area**: config
 
@@ -80,6 +80,8 @@ Before answering model/pricing questions, restate the exact model IDs requested 
 ### Details
 使用者再次提醒「每次記帳都要在 reminder 通知」。我這次雖然成功把消費寫入 CSV、算出當月統計並回覆使用者，但漏掉了 skill 明定的 reminder bot 推送步驟。這代表我在執行已知固定流程時，只做了聊天面上的確認，沒有完整執行整個記帳工作流。
 
+2026-03-24 又再次重複發生一次：處理 3/22 午餐「拉亞漢堡 炸雞麵+奶茶+雞塊 257」時，仍然只完成了寫入與回覆，沒有發 reminder 通知，代表這已不是單次遺漏，而是固定流程執行沒有被我確實收尾。
+
 ### Suggested Action
 之後只要觸發 expense-tracker 記帳流程，就要把步驟視為固定三件事：1) 寫入 CSV，2) 更新/查統計，3) 立即發送 reminder bot 摘要通知。回覆使用者前先確認三步都完成。
 
@@ -87,6 +89,9 @@ Before answering model/pricing questions, restate the exact model IDs requested 
 - Source: user_feedback
 - Related Files: /home/node/.openclaw/workspace/skills/expense-tracker/SKILL.md, /home/node/.openclaw/workspace/expenses/2026-03.csv
 - Tags: expense, reminder, workflow, correction
+- Recurrence-Count: 2
+- First-Seen: 2026-03-19
+- Last-Seen: 2026-03-24
 
 ---
 
