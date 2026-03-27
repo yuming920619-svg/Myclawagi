@@ -13,7 +13,7 @@ Keep this file practical. Put only environment-specific notes here.
 - Reminder bot accountId: `reminder`（自動通知預設走這個）
 - LINE is temporarily disabled after upgrading to OpenClaw `2026.3.22` because the bundled LINE plugin crashes on load (`Cannot redefine property: isSenderAllowed`)
 - Old user-installed LINE plugin was moved to `~/.openclaw/plugin-backups/_disabled-line-20260325-160946`
-- Discord is backup-only for now; valid target ID still missing
+- Discord is not used as a communication channel for this workspace
 
 ## Self-Improvement
 - Workspace root has `.learnings/` enabled:

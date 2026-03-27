@@ -11,6 +11,8 @@
 - 若指定安裝某個 ClawHub skill，偏好完整安裝不要遺漏；若 `clawhub install` 受 rate limit 或其他限制，可接受改用手動下載/解包安裝
 - 對「專題討論」評分草稿流程，GitHub 同步屬於固定流程：生成可用稿後，預設更新 `Myclawagi/Special Topic Discussion/` 並推送，除非使用者明確要求先不要 push
 - 若同一天的專題討論草稿需要提供給不同人或做不同措辭版本，偏好另存為獨立檔案（如「第二版」），不要覆蓋原稿
+- 專題討論評論偏好：內容要比「安全模板句」更有深度，應從題目合理延伸研究意義、分析角度、方法或應用價值，以及可補強之處；但仍需避免過度杜撰未明示的實驗結果、問答表現或具體細節
+- 專題討論輸入偏好：若希望評論更有深度，PPT 截圖比只有題目更有幫助；封面可作背景，但最好再附方法頁、結果頁或結論頁
 - 對記帳流程，使用者明確要求：**每次記帳後都要同步發送 Telegram reminder bot 通知**；不能只完成本地 CSV 記錄與聊天回覆
 
 ## Vega（我）
@@ -19,14 +21,14 @@
 - 個性：理工感、直白、不囉唆
 
 ## 系統架構
-- OpenClaw 版本：`2026.3.23`（2026-03-25 確認；歷程：2026.3.8 → 2026.3.11 → 2026.3.13 → 2026.3.22 → 2026.3.23）
+- OpenClaw 版本：`2026.3.24`（2026-03-27 確認；歷程：2026.3.8 → 2026.3.11 → 2026.3.13 → 2026.3.22 → 2026.3.23 → 2026.3.24）
 - Workspace 已採用 proactive-agent 的「中整合」：使用 `SESSION-STATE.md`、`notes/open-loops.md`、`notes/areas/recurring-patterns.md` 與輕量 heartbeat 維護；不啟用 full WAL、`memory/working-buffer.md`、full proactive tracking
 - 預設模型：openai-codex/gpt-5.4
 - 現行模型容災：`openai-codex/gpt-5.4` → `anthropic/claude-opus-4-6` → `anthropic/claude-sonnet-4-6` → `openai/gpt-5.4`；使用者已明確決定 **`sonnet-4-6` 就夠，不需要把 `sonnet-4-5` 放進 main fallback**。策略為訂閱優先，API key 最後 fallback
 - OpenClaw 可同時配置 `openai` API key 與 `openai-codex` OAuth / subscription，兩者不互斥；但 `openai-codex/*` 模型不會自動改吃 `openai` API key，若 Codex 認證失效需獨立重新登入
 - 可切換模型：openai-codex/gpt-5.3-codex、openai-codex/gpt-5.4、openai/gpt-5-mini（alias: `gpt-mini`）、anthropic/claude-opus-4-6、anthropic/claude-sonnet-4-5、anthropic/claude-sonnet-4-6
 - Browser 功能已啟用；目前雲端主機未安裝 Chromium/Chrome，因此 `openclaw` 托管瀏覽器暫時無法直接啟動，但 remote browser sandbox / Remote CDP 已實測可用
-- 通知通道：Telegram 正常；LINE 在 OpenClaw `2026.3.22` 與 `2026.3.23` 此環境皆會因 plugin crash（`Cannot redefine property: isSenderAllowed`）而無法啟用，故自 2026-03-25 起維持停用；Discord 備援待設定 target ID
+- 通知通道：Telegram 正常；LINE 目前仍維持停用，已知原因是 plugin crash（`Cannot redefine property: isSenderAllowed`；至少在 OpenClaw `2026.3.22`、`2026.3.23` 曾確認受影響）；Discord 不作為溝通工具或備援通道規劃
 - Memory search 已可用（2026-03-19 實測可回傳結果）；若結果弱、空白或暫時不可用，仍可由 `skills/memory-retrieval` 的 lexical fallback 補強
 - 已建立自我迭代踩坑系統（`skills/pitfall-loop` + `memory/pitfalls.jsonl` + 每週回顧 cron）
 
@@ -55,6 +57,3 @@
 - 2026-02-18：跑 bchtest repo（FFRAM02）RTL 模擬，BCH ECC 全部通過（4 phase、64 筆測試零失敗）
 - GitHub repo：github.com/yuming920619-svg/Myclawagi
 
-## 待辦 / 未完成
-- Discord 備援通道尚缺有效 target ID
-- MEMORY.md 定期維護（從日誌精煉重點）

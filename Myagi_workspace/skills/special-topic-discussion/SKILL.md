@@ -41,20 +41,47 @@ For this workflow, default to the existing audience-evaluation pattern:
 
 If the live form differs, prefer the live form.
 
-### 3. Generate comments conservatively
+### 3. Generate comments conservatively but with real depth
 
 When the user only gives speaker names and topics, do **not** pretend to know detailed presentation performance.
 
 Default behavior:
-- use conservative, generic-but-plausible comments derived from the topic itself
+- write comments from the topic itself, but avoid sounding empty, formulaic, or one-sided
 - keep tone natural and usable in a course form
 - default score suggestion to `4/5` unless the user provided stronger signals
 - treat the form minimum as a hard requirement: if the form says at least 30 Chinese characters, generate comments safely above that floor rather than aiming vaguely near it
-- prefer about 32–45 Chinese characters per required comment unless the user requests a different length
+- for this user, prefer **short audience-style comments** by default: each item should read like something a real listener could type on the spot, not a mini review paragraph
+- prefer about **32–45 Chinese characters** per required comment unless the user requests a different length or a more detailed version
+
+Depth rules:
+- infer only **reasonable research-level angles** from the title/topic, such as: problem importance, engineering relevance, method choice, analysis depth, system trade-offs, application value, or expected technical challenges
+- make the comment feel more substantive by mentioning one likely analytical dimension (for example: model assumptions, comparison baseline, practical constraints, design trade-offs, validation path, or application scenario)
+- keep the language cautiously framed when evidence is weak, using patterns like `若能進一步...`, `若後續能補充...`, `若在分析中納入...`, instead of pretending those details were already shown in the talk
+- avoid overclaiming experimental results, data quality, novelty, or Q&A performance unless the user mentioned them
+- avoid writing praise that is so generic it could fit any topic without modification
+- when slide evidence is rich, use it to choose **which concrete angle to mention**, but still keep the final sentence compact and listener-like
 
 Good pattern:
-- tie the comment to topic clarity, practical value, structure, explanation, or likely research significance
-- avoid overclaiming experimental results, data quality, or Q&A performance unless the user mentioned them
+- tie the comment to topic clarity, practical value, structure, explanation, and likely research significance
+- if the title suggests a technical method or application domain, reflect that in the wording
+- prefer balanced comments: acknowledge topic value, then point to one meaningful direction for deeper analysis or clearer explanation
+- keep each item to **one natural sentence** whenever possible; do not let it expand into a mini-essay
+
+Anti-template rule for all dimensions (1–5):
+- do **not** let items 1–4 drift into the same repeated sentence skeleton across all speakers
+- vary the angle for each dimension according to the speaker's actual topic or slide evidence: for example, one speaker's first item may stress research value, another may stress method design, another may stress validation depth
+- spread sentence shapes across the batch instead of repeating the same patterns such as `有把 A 跟 B 連起來`, `整體脈絡算清楚`, `看得出準備相當認真`
+- for item 2, vary between background linkage, interdisciplinary accessibility, application-context explanation, or method-to-problem connection
+- for item 3, vary between structure completeness, comparison flow, result arrangement, conclusion clarity, or transition smoothness
+- for item 4, vary between figure support, explanation rhythm, key-point delivery, technical clarity, or professionalism in presentation
+- even when keeping the same score and overall stance, make the wording and emphasis genuinely different across speakers
+
+Q&A-dimension rule (very important):
+- do **not** let the fifth item (`問答回應與臨場反應`) collapse into the same repeated template for every speaker
+- anchor the fifth item to the speaker's actual topic or slide evidence, choosing one likely angle such as: method choice, parameter setting, result interpretation, comparison basis, engineering trade-off, ecological meaning, model limitation, or practical application
+- when evidence is weak, still make it topic-specific rather than generic; avoid repeatedly writing the same `若能再補充...整體會更完整` pattern across all speakers
+- vary the sentence shape across speakers: some can focus on explanation clarity, some on result interpretation, some on trade-offs, and some on application meaning
+- if the slides already show clear results or validation, let the fifth item refer to those specifics instead of falling back to a generic placeholder
 
 ### 4. Output format
 
@@ -65,6 +92,12 @@ Recommended format:
 - `1. 研究內容與學術深度（建議分數：4/5）`
 - one paste-ready comment
 - repeat for dimensions 2 to 5
+
+Preferred default output for this user:
+- short-form audience comments
+- one sentence per item
+- direct paste-ready wording
+- no analysis paragraph before or after the block unless the user asks
 
 Prefer a compact format over long prose.
 
@@ -95,6 +128,14 @@ When the user wants an alternate version for classmates, reuse, or wording varia
 - do not overwrite the original version
 - commit and push the alternate version as its own file
 
+Classmate-version wording rules:
+- keep the same speaker order, score suggestions, and overall evaluation direction as the original unless the user asks for different scoring
+- rewrite every comment with noticeably different wording; do not just change a few words mechanically
+- keep the same default length discipline: short audience-style comments, usually about 32–45 Chinese characters and safely above the form minimum
+- make the tone easy to copy/share with classmates: natural, neutral, and paste-ready
+- avoid overly personal phrasing, rare wording, or details that would make multiple classmates' answers look obviously copied from one source
+- prefer the same meaning with alternate phrasing, not a change in evaluation stance
+
 ### 6. Commit and push safely
 
 When pushing to GitHub:
@@ -115,6 +156,8 @@ Do not sweep unrelated workspace changes into the commit.
 - Prefer direct, paste-ready text.
 - Keep comments short and low-risk, but never below the form's minimum length requirement.
 - If the form requires at least 30 characters, aim slightly above the threshold to avoid edge-case counting failures.
+- **Before returning or pushing a draft, validate every generated comment one by one**; if any item is under the minimum by plain character count, rewrite it before sending.
+- When a sentence lands close to the threshold, prefer rewriting it to a safer margin instead of trying to skate exactly on 30.
 - If evidence is weak, sound cautious rather than overly specific.
 - If the user asks for “只有必答題”, omit optional feedback sections.
 - If the user asks for “整理好”, return a cleaner block without repeated explanation.

@@ -118,6 +118,145 @@ Before answering model/pricing questions, restate the exact model IDs requested 
 
 ---
 
+## [LRN-20260327-001] correction
+
+**Logged**: 2026-03-27T08:57:00Z
+**Priority**: medium
+**Status**: pending
+**Area**: docs
+
+### Summary
+專題討論表單評論不能寫得太長，應更像聽眾當場填表的自然短評，但仍需穩定超過 30 字門檻。
+
+### Details
+在為專題討論講者生成評論時，我把內容寫得偏完整分析段落，雖然更有深度，但使用者指出這樣不像實際聽眾會在現場表單裡寫出的內容。之後的正確方向應是保留一點研究感與具體性，但把每條壓到更精簡、自然、貼表單即可用的長度。
+
+### Suggested Action
+後續專題討論評論改用「短評模式」：每條大約 32–45 個中文字、語氣自然、可直接貼表單；避免寫成小段評論文，同時維持不空泛且不杜撰細節。
+
+### Metadata
+- Source: user_feedback
+- Related Files: /home/node/.openclaw/workspace/skills/special-topic-discussion/SKILL.md, /home/node/.openclaw/workspace/.learnings/LEARNINGS.md
+- Tags: special-topic-discussion, writing-style, correction, brevity
+
+---
+
+## [LRN-20260327-002] correction
+
+**Logged**: 2026-03-27T15:42:00Z
+**Priority**: medium
+**Status**: pending
+**Area**: docs
+
+### Summary
+專題討論表單的第 5 題（問答回應與臨場反應）不能對所有講者都套同一種句型，應依講者主題與內容重點寫出不同切角。
+
+### Details
+使用者指出我在專題討論評論裡，第 5 題常常都寫成類似「如果能再補充某件事會更好」的固定模板，導致不同講者之間看起來過於一致。正確方向不是完全放棄保守寫法，而是讓第 5 題根據該講者的題目或投影片內容，改從方法選擇、結果解讀、工程權衡、應用意義、限制說明等不同面向切入。
+
+### Suggested Action
+之後撰寫專題討論評論時，特別是第 5 題，要避免模板化重複句型；同一批講者之間應刻意分散切角與句式，保持 topic-specific、listener-like、但不杜撰。
+
+### Metadata
+- Source: user_feedback
+- Related Files: /home/node/.openclaw/workspace/skills/special-topic-discussion/SKILL.md, /home/node/.openclaw/workspace/.learnings/LEARNINGS.md
+- Tags: special-topic-discussion, q-and-a, writing-style, correction, variation
+
+---
+
+## [LRN-20260327-003] correction
+
+**Logged**: 2026-03-27T15:45:00Z
+**Priority**: medium
+**Status**: pending
+**Area**: docs
+
+### Summary
+專題討論評論不只第 5 題，連第 1–4 題也要避免批次模板化；同一批講者之間應使用不同句型與不同切角。
+
+### Details
+使用者指出就算把第 5 題改掉，如果第 1–4 題仍大量重複相同骨架，整份表單還是會看起來很像模板生成。之後正確做法是讓每一題都根據該講者的題目、方法、結果、圖表或應用場景，分散寫法與著力點，而不是只做表面換字。
+
+### Suggested Action
+之後撰寫專題討論評論時，1–5 題都要做 anti-template 檢查；同一批講者之間避免重複 `整體脈絡清楚`、`看得出準備認真`、`有把 A 與 B 連起來` 這類高重複骨架。
+
+### Metadata
+- Source: user_feedback
+- Related Files: /home/node/.openclaw/workspace/skills/special-topic-discussion/SKILL.md, /home/node/.openclaw/workspace/.learnings/LEARNINGS.md
+- Tags: special-topic-discussion, writing-style, correction, anti-template, variation
+
+---
+
+## [LRN-20260327-004] correction
+
+**Logged**: 2026-03-27T15:58:00Z
+**Priority**: high
+**Status**: pending
+**Area**: docs
+
+### Summary
+專題討論 skill 不能只寫「目標長度 30+」原則，還必須明確要求在輸出前逐條檢查字數，避免實際成品仍出現不足 30 字的評論。
+
+### Details
+使用者指出本次產生的評論裡有好幾條實際不到 30 字。這代表即使 skill 已寫了長度規則，若沒有把「生成後逐條驗證」寫成明確收尾步驟，執行時仍可能漏掉。正確做法是把驗字數變成顯式 checklist，而不是只靠生成時的目標長度。
+
+### Suggested Action
+之後專題討論評論在回傳或 push 前，都要逐條檢查每一則評論的字數；低於門檻就先改到安全邊際再送出。
+
+### Metadata
+- Source: user_feedback
+- Related Files: /home/node/.openclaw/workspace/skills/special-topic-discussion/SKILL.md, /home/node/.openclaw/workspace/.learnings/LEARNINGS.md
+- Tags: special-topic-discussion, length-check, validation, correction
+
+---
+
+## [LRN-20260327-005] correction
+
+**Logged**: 2026-03-27T16:26:00Z
+**Priority**: medium
+**Status**: pending
+**Area**: config
+
+### Summary
+整理 workspace 或 open loops 時，不能把「技術上可當備援」誤寫成使用者真的想用的溝通通道；Discord 不應被預設成備援方案。
+
+### Details
+我在整理 `notes/open-loops.md` 與相關記憶時，擅自把 Discord target ID 視為待補齊事項，等於把技術上的可能性誤當成使用者偏好。使用者明確更正：他完全不需要 Discord，也沒有要把 Discord 當溝通工具。這代表之後處理通道、通知、備援規劃時，必須區分「系統可支援」與「使用者真的要用」。
+
+### Suggested Action
+之後只有在使用者明確要求時，才把某個通道列為溝通工具或備援方案。整理 workspace 記憶時，若某通道只是技術上可用、但未被使用者採納，就不要把它寫成 open loop 或待辦。
+
+### Metadata
+- Source: user_feedback
+- Related Files: /home/node/.openclaw/workspace/notes/open-loops.md, /home/node/.openclaw/workspace/TOOLS.md, /home/node/.openclaw/workspace/USER.md, /home/node/.openclaw/workspace/MEMORY.md
+- Tags: discord, channels, workspace, correction, preference
+
+---
+
+## [LRN-20260327-006] correction
+
+**Logged**: 2026-03-27T16:35:00Z
+**Priority**: high
+**Status**: promoted
+**Promoted**: /home/node/.openclaw/workspace/skills/expense-tracker/SKILL.md
+**Area**: config
+
+### Summary
+用 shell 組 reminder 訊息時，金額前的 `$` 不能直接放在雙引號字串裡，否則像 `$92`、`$140` 會被當成 shell 位置參數展開，導致通知金額顯示錯誤。
+
+### Details
+本次記帳的 CSV 寫入其實是正確的：雞柳燴飯 92、義大利麵 140。但我在送 Telegram reminder bot 時，把訊息內容寫進 shell 雙引號字串，導致 `$92` 被解析成 `$9` + `2`、`$140` 被解析成 `$1` + `40`，最後通知變成錯誤的 `2` 和 `40`。這是提醒訊息格式錯，不是記帳資料本身錯。
+
+### Suggested Action
+之後凡是用 shell 組含金額的提醒訊息，應避免讓 `$` 經過 shell 展開：改用單引號 heredoc、跳脫成 `\$`，或乾脆不要在 shell 內插值。送出前也應快速檢查訊息內容是否與 CSV 一致。
+
+### Metadata
+- Source: user_feedback
+- Related Files: /home/node/.openclaw/workspace/expenses/2026-03.csv, /home/node/.openclaw/workspace/.learnings/LEARNINGS.md
+- Tags: expense, reminder, shell, dollar-sign, correction
+
+---
+
 ## [LRN-20260319-001] correction
 
 **Logged**: 2026-03-19T03:08:00Z

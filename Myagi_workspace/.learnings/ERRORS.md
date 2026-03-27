@@ -366,3 +366,97 @@ Treat this as an upstream/bundled LINE plugin compatibility issue on 2026.3.22. 
 - Reproducible: yes
 - Related Files: /home/node/.openclaw/openclaw.json, /app/extensions/line, /home/node/.openclaw/plugin-backups/_disabled-line-20260325-160946
 
+---
+
+## [ERR-20260326-001] git_push_non_fast_forward_recurred
+
+**Logged**: 2026-03-26T06:21:00Z
+**Priority**: low
+**Status**: pending
+**Area**: infra
+
+### Summary
+Another GitHub push to `Myclawagi` was rejected because remote `main` had advanced beyond the local branch.
+
+### Error
+```
+To https://github.com/yuming920619-svg/Myclawagi.git
+ ! [rejected]        HEAD -> main (fetch first)
+error: failed to push some refs to 'https://github.com/yuming920619-svg/Myclawagi.git'
+```
+
+### Context
+- Operation attempted: push deletion of `Myagi_workspace/TOKEN_STRATEGY.md`
+- Local commit was `12dfab8` (`sync: remove obsolete TOKEN_STRATEGY.md`)
+- Remote had advanced from `d8663f5` to `27ba316`
+- Safe recovery path is still `git fetch` / `git pull --rebase origin main` and then push again
+
+### Suggested Fix
+Before pushing to `github.com/yuming920619-svg/Myclawagi`, fetch or rebase first when another device/session may have updated `main`.
+
+### Metadata
+- Reproducible: yes
+- Related Files: /home/node/.openclaw/workspace/Myclawagi/Myagi_workspace/TOKEN_STRATEGY.md
+- See Also: ERR-20260320-001
+
+---
+
+## [ERR-20260326-002] cron_one_shot_name_match_missing_job
+
+**Logged**: 2026-03-26T15:31:00Z
+**Priority**: low
+**Status**: pending
+**Area**: infra
+
+### Summary
+Tried to retime three one-shot reminder jobs by matching expected names, but one "前一天" job no longer existed because the earlier one-shot reminder had already disappeared after its prior schedule.
+
+### Error
+```
+Error: Job not found for 前一天
+```
+
+### Context
+- Operation attempted: move the "與主任有約" reminder set from 3/27 to 4/10
+- Initial approach assumed all three original one-shot jobs still existed in cron storage
+- Actual state: only the "當天早上" and "出門前" jobs remained; the "前一天" job had to be recreated instead of edited
+
+### Suggested Fix
+When editing old one-shot reminders, first inspect current cron jobs and do not assume every original reminder still exists; be ready to recreate missing ones.
+
+### Metadata
+- Reproducible: yes
+- Related Files: /home/node/.openclaw/workspace/.learnings/ERRORS.md
+- See Also: ERR-20260326-001
+
+---
+
+## [ERR-20260327-001] git_pull_rebase_with_unstaged_changes
+
+**Logged**: 2026-03-27T15:47:00Z
+**Priority**: low
+**Status**: pending
+**Area**: infra
+
+### Summary
+Tried to run `git pull --rebase` before staging/committing the rewritten discussion drafts, and Git refused because the working tree had unstaged changes.
+
+### Error
+```
+error: cannot pull with rebase: You have unstaged changes.
+error: please commit or stash them.
+```
+
+### Context
+- Operation attempted: sync remote `main` before pushing rewritten `2026-03-27` audience evaluation drafts
+- Local repo had modified tracked files in `Special Topic Discussion/`
+- Correct flow here is: stage target files → commit → push; only fetch/rebase after commit if push is rejected
+
+### Suggested Fix
+For focused document updates, do not call `git pull --rebase` with unstaged tracked edits; either commit first or use an explicit autostash/rebase flow.
+
+### Metadata
+- Reproducible: yes
+- Related Files: /home/node/.openclaw/workspace/Myclawagi/Special Topic Discussion/2026-03-27_觀眾評分表草稿.md, /home/node/.openclaw/workspace/Myclawagi/Special Topic Discussion/2026-03-27_觀眾評分表草稿_第二版.md
+- See Also: ERR-20260326-001
+

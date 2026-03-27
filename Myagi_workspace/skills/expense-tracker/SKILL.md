@@ -114,4 +114,6 @@ bash <skill_dir>/scripts/sync-to-github.sh
 - 金額一律為新台幣整數，不需要幣別符號
 - 若使用者說「大概」「約」，取最接近的整數
 - 不確定分類時歸「其他」，不要猜
+- 若用 shell 組 reminder 訊息且內容含 `$金額`，不要把 `$92`、`$140` 這類字樣直接放進會經過 shell 展開的雙引號字串；應改用單引號 heredoc、跳脫成 `\$`，或其他不會被 shell 吃掉 `$` 的方式
+- 送出 reminder bot 前，快速檢查一次訊息內容是否與剛寫入的 CSV 金額一致
 - `<skill_dir>` 指本 skill 目錄：resolve relative to this SKILL.md's location
