@@ -1,19 +1,11 @@
 # Memory
 
 ## 使用者
-- 碩士班學生，研究方向：**MRAM 上實作 ECC**（STT-MRAM / SOT-MRAM / eMRAM）
-- 時區：Asia/Taipei (UTC+8)
-- 語言：繁體中文
+> 基本資料與偏好詳見 USER.md，此處僅記錄 USER.md 未涵蓋的補充規則。
+
 - 回覆格式：先 3 行重點 + 短摘要，細節放附件/PDF
-- 不再預設長任務一定走 sub-agent；依任務性質決定是否背景派工。對背景派工有品質顧慮；若任務需要大量上下文、策略討論或研究判斷，偏好前景直接處理（若背景派工，偏好完成後一次通知）
-- Token 策略：偏好訂閱優先（GPT 訂閱 → Claude 訂閱），兩邊都受限時再退回 OpenAI API key；省額度優先降工具回合與上下文長度
-- 偏好「踩坑自動提醒」流程：當我偵測到本次任務可能踩坑時，先主動詢問是否記錄；僅在使用者明確同意後寫入 pitfall-loop
 - 若指定安裝某個 ClawHub skill，偏好完整安裝不要遺漏；若 `clawhub install` 受 rate limit 或其他限制，可接受改用手動下載/解包安裝
-- 對「專題討論」評分草稿流程，GitHub 同步屬於固定流程：生成可用稿後，預設更新 `Myclawagi/Special Topic Discussion/` 並推送，除非使用者明確要求先不要 push
-- 若同一天的專題討論草稿需要提供給不同人或做不同措辭版本，偏好另存為獨立檔案（如「第二版」），不要覆蓋原稿
-- 專題討論評論偏好：內容要比「安全模板句」更有深度，應從題目合理延伸研究意義、分析角度、方法或應用價值，以及可補強之處；但仍需避免過度杜撰未明示的實驗結果、問答表現或具體細節
 - 專題討論輸入偏好：若希望評論更有深度，PPT 截圖比只有題目更有幫助；封面可作背景，但最好再附方法頁、結果頁或結論頁
-- 對記帳流程，使用者明確要求：**每次記帳後都要同步發送 Telegram reminder bot 通知**；不能只完成本地 CSV 記錄與聊天回覆
 
 ## Vega（我）
 - 2026-02-17 命名為 Atlas 🛰️
@@ -24,7 +16,7 @@
 - OpenClaw 版本：`2026.3.24`（2026-03-27 確認；歷程：2026.3.8 → 2026.3.11 → 2026.3.13 → 2026.3.22 → 2026.3.23 → 2026.3.24）
 - Workspace 已採用 proactive-agent 的「中整合」：使用 `SESSION-STATE.md`、`notes/open-loops.md`、`notes/areas/recurring-patterns.md` 與輕量 heartbeat 維護；不啟用 full WAL、`memory/working-buffer.md`、full proactive tracking
 - 預設模型：openai-codex/gpt-5.4
-- 現行模型容災：`openai-codex/gpt-5.4` → `anthropic/claude-opus-4-6` → `anthropic/claude-sonnet-4-6` → `openai/gpt-5.4`；使用者已明確決定 **`sonnet-4-6` 就夠，不需要把 `sonnet-4-5` 放進 main fallback**。策略為訂閱優先，API key 最後 fallback
+- 現行模型容災：`openai-codex/gpt-5.4` → `anthropic/claude-opus-4-6`；使用者已決定 main fallback 不保留 `anthropic/claude-sonnet-4-6`，也不再把 `openai/gpt-5.4` 放進 main fallback，以避免 session 一旦滑到其他路線後不易切回 Codex。策略為訂閱優先，不再把 OpenAI API key 作為 main fallback。
 - OpenClaw 可同時配置 `openai` API key 與 `openai-codex` OAuth / subscription，兩者不互斥；但 `openai-codex/*` 模型不會自動改吃 `openai` API key，若 Codex 認證失效需獨立重新登入
 - 可切換模型：openai-codex/gpt-5.3-codex、openai-codex/gpt-5.4、openai/gpt-5-mini（alias: `gpt-mini`）、anthropic/claude-opus-4-6、anthropic/claude-sonnet-4-5、anthropic/claude-sonnet-4-6
 - Browser 功能已啟用；目前雲端主機未安裝 Chromium/Chrome，因此 `openclaw` 托管瀏覽器暫時無法直接啟動，但 remote browser sandbox / Remote CDP 已實測可用
@@ -45,6 +37,7 @@
 
 ## 定期任務（Cron）
 - 每日 07:30 (UTC+8)：台北天氣提醒
+- 每日 08:40 (Asia/Taipei)：防曬提醒 → reminder bot
 - 天堂W BOSS/活動提醒：多個每日+每週排程，含 LINE 備援版
 - 記帳週報：每週日 21:00 (Asia/Taipei) → reminder bot
 - 記帳月報：每月 1 號 09:00 (Asia/Taipei) → reminder bot

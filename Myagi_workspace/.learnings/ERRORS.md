@@ -4,6 +4,36 @@ Command failures, exceptions, and unexpected behaviors.
 
 ---
 
+## [ERR-20260329-001] telegram_commentary_trace_leak
+
+**Logged**: 2026-03-29T16:47:00Z
+**Priority**: high
+**Status**: pending
+**Area**: infra
+
+### Summary
+During a Telegram live chat, internal commentary / tool-call traces (including raw exec JSON and planning text) were surfaced to the user while the agent was busy.
+
+### Error
+```
+User saw a series of internal execution-command messages in Telegram that should have remained internal.
+Session history showed commentary-phase assistant text/tool payloads interleaved into the live chat timeline.
+```
+
+### Context
+- Operation attempted: create school-deadline reminders via docs lookup + `openclaw cron add`
+- Observed behavior: user received multiple internal-looking command messages before the final human reply
+- Impact: confusing UX and exposed implementation detail in a direct chat
+
+### Suggested Fix
+For Telegram live chats, keep commentary empty/minimal during tool work; prefer direct tool calls with a single final user-facing reply. If deeper platform investigation happens later, inspect why commentary-phase messages are being surfaced on this channel/session.
+
+### Metadata
+- Reproducible: unknown
+- Related Files: /home/node/.openclaw/workspace/TOOLS.md
+
+---
+
 ## [ERR-20260325-001] rg_missing_in_runtime
 
 **Logged**: 2026-03-25T16:43:00Z
@@ -460,3 +490,154 @@ For focused document updates, do not call `git pull --rebase` with unstaged trac
 - Related Files: /home/node/.openclaw/workspace/Myclawagi/Special Topic Discussion/2026-03-27_觀眾評分表草稿.md, /home/node/.openclaw/workspace/Myclawagi/Special Topic Discussion/2026-03-27_觀眾評分表草稿_第二版.md
 - See Also: ERR-20260326-001
 
+
+## [ERR-20260328-001] openclaw_cli_parallel_gateway_closure
+
+**Logged**: 2026-03-28T11:25:00Z
+**Priority**: low
+**Status**: pending
+**Area**: infra
+
+### Summary
+Running several `openclaw` CLI calls in parallel against the local loopback gateway caused some commands to fail with normal WebSocket closure (`1000`).
+
+### Error
+```
+gateway connect failed: Error: gateway closed (1000): 
+Error: gateway closed (1000 normal closure): no close reason
+Gateway target: ws://127.0.0.1:18789
+Source: local loopback
+Config: /home/node/.openclaw/openclaw.json
+Bind: loopback
+```
+
+### Context
+- Operation attempted: parallel `openclaw cron runs --id ...` checks during cron health inspection
+- Some concurrent calls succeeded, while others exited with gateway closure
+- Re-running the same checks serially / in smaller batches worked
+
+### Suggested Fix
+When inspecting many cron jobs, avoid spawning too many concurrent `openclaw` CLI processes against the same local gateway. Prefer serial checks or small batches.
+
+### Metadata
+- Reproducible: unknown
+- Related Files: /home/node/.openclaw/workspace/.learnings/ERRORS.md
+
+---
+
+## [ERR-20260329-001] openclaw_cron_at_tz_interpretation
+
+**Logged**: 2026-03-29T04:05:00Z
+**Priority**: medium
+**Status**: pending
+**Area**: config
+
+### Summary
+`openclaw cron add --at 'YYYY-MM-DD HH:MM' --tz Asia/Taipei` was interpreted as a UTC timestamp in this environment, creating a one-shot reminder 8 hours late.
+
+### Error
+```
+Requested: 2026-03-29 16:00 @ Asia/Taipei
+Created job schedule.at: 2026-03-29T16:00:00.000Z
+```
+
+### Context
+- Operation attempted: create one-shot reminder for today at 16:00 Taipei time
+- Command used `--at '2026-03-29 16:00' --tz Asia/Taipei`
+- Resulting job was scheduled at 16:00 UTC instead of 16:00 UTC+8
+- Fixed by editing the job to an explicit offset timestamp: `2026-03-29T16:00:00+08:00`
+
+### Suggested Fix
+For one-shot reminders, prefer explicit ISO timestamps with numeric offset (for example `2026-03-29T16:00:00+08:00`) instead of relying on `--tz` to reinterpret an offset-less `--at` value.
+
+### Metadata
+- Reproducible: unknown
+- Related Files: /home/node/.openclaw/workspace/.learnings/ERRORS.md
+
+---
+
+## [ERR-20260330-001] duckduckgo_exact_query_bot_challenge
+
+**Logged**: 2026-03-30T05:44:00Z
+**Priority**: low
+**Status**: pending
+**Area**: infra
+
+### Summary
+A `web_search` follow-up query for an exact STT-MRAM ECC paper title triggered DuckDuckGo bot detection instead of returning results.
+
+### Error
+```
+DuckDuckGo returned a bot-detection challenge.
+```
+
+### Context
+- Operation attempted: refine a prior successful broad STT-MRAM ECC search into an exact-title / PDF lookup
+- Initial broad search worked, but the narrower follow-up query was blocked
+- Working fallback was to use the already-returned arXiv result and fetch the abstract directly from `https://arxiv.org/abs/1509.08806`
+
+### Suggested Fix
+When `web_search` hits DuckDuckGo bot detection on narrower follow-up queries, avoid retry loops; reuse prior search results, broaden the query, or fetch the candidate source URL directly.
+
+### Metadata
+- Reproducible: unknown
+- Related Files: /home/node/.openclaw/workspace/.learnings/ERRORS.md
+
+---
+
+## [ERR-20260330-002] expense_tracker_shell_quoting_bash_lc
+
+**Logged**: 2026-03-30T15:31:00Z
+**Priority**: low
+**Status**: pending
+**Area**: infra
+
+### Summary
+A complex `bash -lc` command for expense logging failed with shell parsing errors before completion.
+
+### Error
+```
+sh: 42: Syntax error: "(" unexpected
+```
+
+### Context
+- Operation attempted: append two expense rows, compute monthly summary, and send reminder bot message in one shell command
+- The nested quoting/heredoc structure broke under the exec shell wrapper
+- Working fallback was to move the logic into a single Node script and call `openclaw message send` via `execFileSync`
+
+### Suggested Fix
+For multi-step expense logging flows that mix dynamic strings and message sending, prefer a small Node script over deeply nested `bash -lc` quoting.
+
+### Metadata
+- Reproducible: unknown
+- Related Files: /home/node/.openclaw/workspace/skills/expense-tracker/SKILL.md, /home/node/.openclaw/workspace/.learnings/ERRORS.md
+
+---
+## [ERR-20260330-001] exec-shell-pipefail
+
+**Logged**: 2026-03-30T19:00:31Z
+**Priority**: medium
+**Status**: pending
+**Area**: config
+
+### Summary
+OpenClaw exec default shell rejected `set -o pipefail` because the command ran under `/bin/sh`, not bash.
+
+### Error
+```
+sh: 1: set: Illegal option -o pipefail
+```
+
+### Context
+- Command/operation attempted: workspace sync cron shell script via `exec`
+- Input or parameters used: script started with `set -euo pipefail`
+- Environment details: OpenClaw `exec` default shell appears to be `/bin/sh`
+
+### Suggested Fix
+When a script needs `pipefail` or other bash features, invoke `bash -lc '...'` explicitly instead of assuming the default shell is bash.
+
+### Metadata
+- Reproducible: yes
+- Related Files: TOOLS.md
+
+---
