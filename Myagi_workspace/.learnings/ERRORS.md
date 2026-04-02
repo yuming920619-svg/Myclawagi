@@ -4,6 +4,35 @@ Command failures, exceptions, and unexpected behaviors.
 
 ---
 
+## [ERR-20260331-001] exec_default_shell_pipefail
+
+**Logged**: 2026-03-31T19:00:00Z
+**Priority**: low
+**Status**: pending
+**Area**: infra
+
+### Summary
+An `exec` script used `set -euo pipefail` without invoking bash, but the default shell was `/bin/sh`, which rejected `pipefail`.
+
+### Error
+```
+sh: 1: set: Illegal option -o pipefail
+```
+
+### Context
+- Operation attempted: cron-driven workspace sync script for GitHub backup
+- Initial command assumed bash semantics in the default `exec` shell
+- Immediate fix was to wrap the script with `bash -lc '...'
+
+### Suggested Fix
+When using bash-only shell options or syntax in `exec`, explicitly invoke `bash -lc` instead of assuming the default shell supports them.
+
+### Metadata
+- Reproducible: yes
+- Related Files: /home/node/.openclaw/workspace/.learnings/ERRORS.md
+
+---
+
 ## [ERR-20260329-001] telegram_commentary_trace_leak
 
 **Logged**: 2026-03-29T16:47:00Z
