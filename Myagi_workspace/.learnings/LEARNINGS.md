@@ -371,3 +371,27 @@ Todo plugin 沒有出現在工具清單時，不能先假設缺的是 `tools.all
 - Tags: plugin, openclaw, todo, config, correction, permissions
 
 ---
+
+## [LRN-20260404-002] best_practice
+
+**Logged**: 2026-04-04T06:03:00Z
+**Priority**: high
+**Status**: promoted
+**Area**: config
+
+### Summary
+在 Telegram 想關掉手動 exec 批准時，不能只關 `channels.telegram.accounts.default.execApprovals.enabled`；還要同步放寬 host exec policy，否則 gateway host 仍可能在沒有 approval client 時直接拒跑命令。
+
+### Details
+使用者希望恢復成「不需要手動批准」的舊體驗。我先把 Telegram account 的 `execApprovals.enabled` 關掉，並誤以為這樣就足夠；但實際再次執行 Todo API 的 `exec` 時，OpenClaw 仍回報「Exec approval is required, but no interactive approval client is currently available」，表示真正卡住的是 gateway host 的 approvals policy，而不是 Telegram prompt surface 本身。後續查文件並直接修正設定後，確認需要同時處理兩層：1) `~/.openclaw/openclaw.json` 的 `tools.exec`，2) `~/.openclaw/exec-approvals.json` 的 host-local policy。把兩者都改成 `security=full`, `ask=off`（並讓 host `askFallback=full`）後，立刻成功免批准新增 Todo，證明這才是完整修法。
+
+### Suggested Action
+之後只要使用者說「不要再手動批准 exec」，就直接檢查並同步處理三件事：1) chat surface 的 `execApprovals.enabled`，2) `tools.exec` 的 host/security/ask，3) `exec-approvals.json` 的 host-local defaults / agent policy。不要再把「關掉 Telegram approval prompt」誤當成「host exec 已經免批准」。
+
+### Metadata
+- Source: conversation
+- Related Files: /home/node/.openclaw/openclaw.json, /home/node/.openclaw/exec-approvals.json, /home/node/.openclaw/workspace/TOOLS.md, /home/node/.openclaw/workspace/.learnings/LEARNINGS.md
+- Tags: openclaw, telegram, exec, approvals, config, best_practice
+- Promoted: TOOLS.md
+
+---

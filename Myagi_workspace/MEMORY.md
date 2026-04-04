@@ -7,6 +7,8 @@
 - 若指定安裝某個 ClawHub skill，偏好完整安裝不要遺漏；若 `clawhub install` 受 rate limit 或其他限制，可接受改用手動下載/解包安裝
 - 專題討論輸入偏好：若希望評論更有深度，PPT 截圖比只有題目更有幫助；封面可作背景，但最好再附方法頁、結果頁或結論頁
 - 主力個人電腦作業系統：Windows
+- ChatGPT 訂閱：每月 22 日續訂；已設定每月 21 日 09:00（Asia/Taipei）前一天提醒（reminder bot）
+- Claude 訂閱：每月 14 日續訂；已設定每月 13 日 09:00（Asia/Taipei）前一天提醒（reminder bot）
 
 ## Vega（我）
 - 2026-02-17 命名為 Atlas 🛰️
@@ -21,7 +23,7 @@
 - OpenClaw 可同時配置 `openai` API key 與 `openai-codex` OAuth / subscription，兩者不互斥；但 `openai-codex/*` 模型不會自動改吃 `openai` API key，若 Codex 認證失效需獨立重新登入
 - 可切換模型：openai-codex/gpt-5.3-codex、openai-codex/gpt-5.4、openai/gpt-5-mini（alias: `gpt-mini`）、anthropic/claude-opus-4-6、anthropic/claude-sonnet-4-5、anthropic/claude-sonnet-4-6
 - Browser 功能已啟用；目前雲端主機未安裝 Chromium/Chrome，因此 `openclaw` 托管瀏覽器暫時無法直接啟動，但 remote browser sandbox / Remote CDP 已實測可用
-- 通知通道：Telegram 正常；LINE 目前仍維持停用，已知原因是 plugin crash（`Cannot redefine property: isSenderAllowed`；至少在 OpenClaw `2026.3.22`、`2026.3.23` 曾確認受影響）；Discord 不作為溝通工具或備援通道規劃
+- 通知通道：Telegram 正常；LINE 目前仍維持停用，已知原因是 plugin crash（`Cannot redefine property: isSenderAllowed`；至少在 OpenClaw `2026.3.22`、`2026.3.23` 曾確認受影響）；Discord 不作為溝通工具或備援通道規劃。補充：目前有部分舊 cron 名稱仍保留「(LINE)」，但實際 delivery 已改走 Telegram reminder bot。
 - Memory search 已可用（2026-03-19 實測可回傳結果）；若結果弱、空白或暫時不可用，仍可由 `skills/memory-retrieval` 的 lexical fallback 補強
 - 已建立自我迭代踩坑系統（`skills/pitfall-loop` + `memory/pitfalls.jsonl` + 每週回顧 cron）
 
@@ -33,8 +35,9 @@
 - 分類：餐飲、飲料、交通、日用品、娛樂、學費、服飾、醫療、其他
 
 ## 待辦系統
-- 已接入 `todo-api-tools` 插件，可透過已部署的 Todo Hub API 管理待辦（list / create / update / delete / restore）
+- 已接入 `todo-api-tools` 插件，可透過已部署的 Todo Hub API 管理待辦（list / create / update / delete / restore；2026-04-04 升級到 `0.2.0` 後能力描述已包含 permanent delete）
 - 2026-04-03 已完成 `todo-api-tools` 的正式接線與 plugin 修復：補上 `plugins.allow`，修正 extension 檔案權限過寬造成的 plugin block，`openclaw plugins inspect/list` 已可辨識此 plugin
+- 2026-04-04 已用使用者提供的新版 tar 成功升級 `todo-api-tools` 至 `0.2.0`，且保留既有 `baseUrl` / `apiToken` / timeout 設定
 - 若剛重啟 gateway、改完 plugin/config 後當前 session 看不到新工具，優先開新 session 再測
 
 ## 重要截止日
@@ -49,7 +52,8 @@
 - 記帳月報：每月 1 號 09:00 (Asia/Taipei) → reminder bot
 - 記帳資料同步 GitHub：每天 23:30 (Asia/Taipei)
 - 晶片測試報告提醒：每週一 09:00 + 倒數密集提醒（至 2026-05-11）
-- MRAM ECC 文獻晨報曾建立，但目前暫停；若之後恢復，應先確認有穩定全文存取或更高研究價值的流程
+- 每週日 22:00 (Asia/Taipei)：記憶整理（`memory-hygiene` skill）→ reminder bot
+- MRAM ECC 文獻晨報曾建立，但目前未列入現行 cron（先前已停用）；若之後恢復，應先確認有穩定全文存取或更高研究價值的流程
 
 ## 研究相關
 - 2026-02-17：下載整理 STT-MRAM FaECC 論文，筆記已轉繁中

@@ -703,6 +703,36 @@ For multi-step expense logging flows that mix dynamic strings and message sendin
 - Related Files: /home/node/.openclaw/workspace/skills/expense-tracker/SKILL.md, /home/node/.openclaw/workspace/.learnings/ERRORS.md
 
 ---
+## [ERR-20260404-001] openclaw_plugin_install_archive_conflicts_existing_id
+
+**Logged**: 2026-04-04T05:08:00Z
+**Priority**: medium
+**Status**: pending
+**Area**: infra
+
+### Summary
+Trying to install a local plugin archive over an already-installed plugin with the same manifest id fails immediately; OpenClaw requires removing the existing install first.
+
+### Error
+```
+plugin already exists: /home/node/.openclaw/extensions/todo-api-tools (delete it first)
+Also not a valid hook pack: Error: package.json missing openclaw.hooks
+```
+
+### Context
+- Operation attempted: install updated `todo-api-tools` from a `.tar` archive with `openclaw plugins install <archive>`
+- Existing plugin id `todo-api-tools` was already installed under `/home/node/.openclaw/extensions/todo-api-tools`
+- OpenClaw did not treat this as an in-place upgrade and aborted before restart/verification
+- Safe recovery path is: back up current `plugins.entries.todo-api-tools` config, uninstall old plugin, install new archive, then restore config/allowlists and restart gateway
+
+### Suggested Fix
+For local plugin archive upgrades, do not assume `openclaw plugins install <archive>` overwrites an existing install. First preserve config, uninstall the existing plugin id, then install the new archive and restore the config.
+
+### Metadata
+- Reproducible: yes
+- Related Files: /home/node/.openclaw/openclaw.json, /home/node/.openclaw/extensions/todo-api-tools, /home/node/.openclaw/workspace/.learnings/ERRORS.md
+
+---
 ## [ERR-20260330-001] exec-shell-pipefail
 
 **Logged**: 2026-03-30T19:00:31Z
