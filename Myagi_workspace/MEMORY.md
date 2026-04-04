@@ -14,7 +14,7 @@
 - 個性：理工感、直白、不囉唆
 
 ## 系統架構
-- OpenClaw 版本：`2026.3.24`（2026-03-27 確認；歷程：2026.3.8 → 2026.3.11 → 2026.3.13 → 2026.3.22 → 2026.3.23 → 2026.3.24）
+- OpenClaw 版本：`2026.4.1`（2026-04-02 確認；歷程：2026.3.8 → 2026.3.11 → 2026.3.13 → 2026.3.22 → 2026.3.23 → 2026.3.24 → 2026.4.1）
 - Workspace 已採用 proactive-agent 的「中整合」：使用 `SESSION-STATE.md`、`notes/open-loops.md`、`notes/areas/recurring-patterns.md` 與輕量 heartbeat 維護；不啟用 full WAL、`memory/working-buffer.md`、full proactive tracking
 - 預設模型：openai-codex/gpt-5.4
 - 現行模型容災：`openai-codex/gpt-5.4` → `anthropic/claude-opus-4-6`；使用者已決定 main fallback 不保留 `anthropic/claude-sonnet-4-6`，也不再把 `openai/gpt-5.4` 放進 main fallback，以避免 session 一旦滑到其他路線後不易切回 Codex。策略為訂閱優先，不再把 OpenAI API key 作為 main fallback。
@@ -31,6 +31,11 @@
 - 每筆記帳後即時推送摘要到 Telegram reminder bot（account: reminder）
 - 每天 23:30 自動同步 CSV 到 GitHub `Myclawagi/Expense tracking/`（原始月檔 + `summary.csv`，不再產生 Excel）
 - 分類：餐飲、飲料、交通、日用品、娛樂、學費、服飾、醫療、其他
+
+## 待辦系統
+- 已接入 `todo-api-tools` 插件，可透過已部署的 Todo Hub API 管理待辦（list / create / update / delete / restore）
+- 2026-04-03 已完成 `todo-api-tools` 的正式接線與 plugin 修復：補上 `plugins.allow`，修正 extension 檔案權限過寬造成的 plugin block，`openclaw plugins inspect/list` 已可辨識此 plugin
+- 若剛重啟 gateway、改完 plugin/config 後當前 session 看不到新工具，優先開新 session 再測
 
 ## 重要截止日
 - **2026-05-11**：晶片測試報告繳交（T18-114D-E0068，教育性晶片，梯次 114D）

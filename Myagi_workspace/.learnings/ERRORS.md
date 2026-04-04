@@ -33,6 +33,67 @@ When using bash-only shell options or syntax in `exec`, explicitly invoke `bash 
 
 ---
 
+## [ERR-20260403-001] todo_plugin_install_pipefail_again
+
+**Logged**: 2026-04-03T11:29:00Z
+**Priority**: medium
+**Status**: pending
+**Area**: infra
+
+### Summary
+While installing the `todo-api-tools` plugin, an `exec` command again assumed bash semantics in the default gateway shell and failed before running any install steps.
+
+### Error
+```
+sh: 1: set: Illegal option -o pipefail
+```
+
+### Context
+- Operation attempted: extract tar, install local plugin, restart gateway, verify status
+- Command started with `set -euo pipefail` directly under gateway `exec`
+- The default shell was `/bin/sh`, so the script aborted before plugin installation
+
+### Suggested Fix
+When using bash-only options or syntax in gateway `exec`, wrap the whole script with `bash -lc '...'` or avoid `pipefail` and other bash-only features.
+
+### Metadata
+- Reproducible: yes
+- Related Files: /home/node/.openclaw/workspace/.learnings/ERRORS.md, /home/node/.openclaw/workspace/TOOLS.md
+- See Also: ERR-20260331-001
+
+---
+
+## [ERR-20260403-002] bash_printf_leading_dash_option
+
+**Logged**: 2026-04-03T11:31:00Z
+**Priority**: low
+**Status**: pending
+**Area**: infra
+
+### Summary
+A follow-up gateway `exec` command switched to `bash`, but `printf "--- ..."` still failed because bash builtin `printf` treated the leading `--` in the format string as an option.
+
+### Error
+```
+bash: line 6: printf: --: invalid option
+printf: usage: printf [-v var] format [arguments]
+```
+
+### Context
+- Operation attempted: extract and install `todo-api-tools`, restart gateway, verify status
+- Script used `printf "--- extracted ---\n"`
+- In bash builtin `printf`, a format string starting with `-` can be parsed as an option unless `--` or a safe format string is used
+
+### Suggested Fix
+Use `printf '%s\n' '--- extracted ---'` or `printf -- '--- extracted ---\n'` when the first format argument begins with `-`.
+
+### Metadata
+- Reproducible: yes
+- Related Files: /home/node/.openclaw/workspace/.learnings/ERRORS.md
+- See Also: ERR-20260403-001
+
+---
+
 ## [ERR-20260329-001] telegram_commentary_trace_leak
 
 **Logged**: 2026-03-29T16:47:00Z

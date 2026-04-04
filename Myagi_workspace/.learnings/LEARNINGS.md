@@ -325,3 +325,49 @@ For model/fallback questions, present the live config as authoritative and treat
 - Tags: workflow, github, special-topic-discussion, correction
 
 ---
+
+## [LRN-20260402-001] best_practice
+
+**Logged**: 2026-04-02T15:46:00Z
+**Priority**: medium
+**Status**: pending
+**Area**: config
+
+### Summary
+在 Telegram exec approvals 流程中，若已經有待批准命令，就不要再插入額外的探索性 shell 指令，避免使用者收到不相干或延遲的 approval 卡而混淆當前任務。
+
+### Details
+本次記帳流程中，我為了查 reminder bot 發送方式，額外跑了 `grep` 類型的探索性 shell 指令。由於 Telegram exec approvals 會為 host exec 產生批准卡，這讓使用者後續看到的 approval 訊息不一定對應當下聊天裡提到的那個步驟，甚至出現看似與記帳流程無關的 `sync-to-github.sh` 批准訊息，增加理解成本。正確做法是在 live chat、尤其 approval-sensitive 的 Telegram 對話中，優先使用不需 exec 的工具；若確實需要 exec，應盡量只送出與當前任務直接相關的固定指令。
+
+### Suggested Action
+之後在 Telegram live chat 中，只要已經進入 approval 流程，就避免再加跑額外 shell 探查。對記帳流程，優先用固定腳本與直接讀檔驗證，少用臨時 `grep`/`bash` 探索命令，降低 approval 卡錯位或延遲造成的混亂。
+
+### Metadata
+- Source: conversation
+- Related Files: /home/node/.openclaw/workspace/TOOLS.md, /home/node/.openclaw/workspace/skills/expense-tracker/SKILL.md, /home/node/.openclaw/workspace/.learnings/LEARNINGS.md
+- Tags: telegram, exec-approvals, expense, workflow, best-practice
+
+---
+
+## [LRN-20260403-001] correction
+
+**Logged**: 2026-04-03T15:32:00Z
+**Priority**: high
+**Status**: pending
+**Area**: config
+
+### Summary
+Todo plugin 沒有出現在工具清單時，不能先假設缺的是 `tools.allow`；要先檢查 `openclaw status` / config warnings，因為真正的 blocker 可能是 `plugins.allow` 或插件路徑權限。
+
+### Details
+我原本推測 `todo-api-tools` 沒出現在工具清單，是因為 `tools.allow` 沒補上，所以先往那個方向處理。但在實際執行 `openclaw gateway restart && openclaw status` 後，真正的警告是：`plugins.allow` 未設、以及 `/home/node/.openclaw/extensions/todo-api-tools/index.js` 是 world-writable（mode 666），因此 plugin candidate 被 block，`plugins.entries.todo-api-tools` 也被當成 stale config entry 忽略。這代表先前對根因的判斷不夠準，應該先看 live status / config warnings，而不是直接依 README 猜測。
+
+### Suggested Action
+之後遇到「插件已安裝但工具沒出現」時，先做三件事：1) 查 `openclaw status` 的 config warnings，2) 檢查是否需要 `plugins.allow` 而不是 `tools.allow`，3) 檢查 extension 檔案權限是否過寬而被 block。確認根因後再改 config，避免做錯方向的修補。
+
+### Metadata
+- Source: conversation
+- Related Files: /home/node/.openclaw/openclaw.json, /home/node/.openclaw/extensions/todo-api-tools/index.js, /home/node/.openclaw/workspace/.learnings/LEARNINGS.md
+- Tags: plugin, openclaw, todo, config, correction, permissions
+
+---

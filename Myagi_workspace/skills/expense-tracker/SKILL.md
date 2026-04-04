@@ -38,15 +38,21 @@ date,time,category,item,amount,note
    - 時間用當前台北時間
 2. Append 到 `expenses/YYYY-MM.csv`（若檔案不存在，先建立含 header 的新檔）
 3. 執行 `bash <skill_dir>/scripts/stats.sh monthly YYYY-MM` 取得當月累計
-4. 用 `openclaw message send` 推送摘要到 Reminder Bot：
+4. 用固定腳本推送摘要到 Reminder Bot（優先，避免每次重新組 shell 訊息）：
 
 ```bash
-openclaw message send \
-  --channel telegram \
-  --account reminder \
-  --target 8087282597 \
-  -m "<摘要訊息>"
+bash /home/node/.openclaw/workspace/skills/expense-tracker/scripts/send-reminder.sh \
+  --item "<品項>" \
+  --amount <金額> \
+  --category "<分類>" \
+  --note "<備註，可空>" \
+  --month YYYY-MM
 ```
+
+此腳本會直接從對應月份 CSV 計算：
+- 當月總額
+- 當月筆數
+- 分類摘要（例如 `餐飲 $903 | 交通 $50`）
 
 摘要格式：
 ```
@@ -57,6 +63,8 @@ openclaw message send \
 📊 N月累計：$<total>（N筆）
   <分類1> $X | <分類2> $X | ...
 ```
+
+若只想先驗證格式、不實際送出，可加 `--dry-run`。
 
 5. 回覆使用者確認（簡短，含本筆紀錄 + 當月累計）
 
@@ -114,6 +122,7 @@ bash <skill_dir>/scripts/sync-to-github.sh
 - 金額一律為新台幣整數，不需要幣別符號
 - 若使用者說「大概」「約」，取最接近的整數
 - 不確定分類時歸「其他」，不要猜
-- 若用 shell 組 reminder 訊息且內容含 `$金額`，不要把 `$92`、`$140` 這類字樣直接放進會經過 shell 展開的雙引號字串；應改用單引號 heredoc、跳脫成 `\$`，或其他不會被 shell 吃掉 `$` 的方式
+- 優先使用 `scripts/send-reminder.sh`（內部再呼叫 `send-reminder.js`）送 reminder，避免每次手組 `openclaw message send` 字串造成 quoting 與 approval churn
+- 若不得不用 shell 組 reminder 訊息且內容含 `$金額`，不要把 `$92`、`$140` 這類字樣直接放進會經過 shell 展開的雙引號字串；應改用單引號 heredoc、跳脫成 `\$`，或其他不會被 shell 吃掉 `$` 的方式
 - 送出 reminder bot 前，快速檢查一次訊息內容是否與剛寫入的 CSV 金額一致
 - `<skill_dir>` 指本 skill 目錄：resolve relative to this SKILL.md's location

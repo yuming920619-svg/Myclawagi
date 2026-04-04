@@ -17,3 +17,7 @@ Keep entries short.
   - Status: 暫緩；現有 repo 的 BCH 實作不可信，使用者目前不想沿用舊版
   - Revisit trigger: 之後準備投入重設計時再重啟
 
+- [ ] 待辦事項網頁專案部署
+  - Status: GitHub `Myclawagi/待辦事項` 目前只有不完整骨架；缺少 `app/`、`lib/`、`supabase/`、`docs/`、`tests/` 等內容，暫時無法直接部署
+  - Revisit trigger: 使用者提供完整 branch / 完整 source，或同意由我直接重建並接手部署
+
