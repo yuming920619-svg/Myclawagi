@@ -395,3 +395,26 @@ Todo plugin 沒有出現在工具清單時，不能先假設缺的是 `tools.all
 - Promoted: TOOLS.md
 
 ---
+
+## [LRN-20260406-001] correction
+
+**Logged**: 2026-04-06T09:35:00Z
+**Priority**: low
+**Status**: pending
+**Area**: config
+
+### Summary
+深夜跨日附近的記帳，不能只機械套用台北當下日期；若使用者補充更正，應優先以消費實際發生日為準並回寫 CSV。
+
+### Details
+我先前把「711 番茄麵+綠茶+毛巾 213」記成 4/6，因為當時依台北當下時間已跨日。但使用者後續明確更正這筆應該算 4/5，代表在接近半夜的記帳情境，單靠系統當下日期不一定等於消費發生日。這類晚餐/宵夜帳如果沒有明講日期，之後要對「是否其實屬於前一天」更敏感。
+
+### Suggested Action
+若記帳發生在深夜跨日附近，且內容像是晚餐/當日晚些時候的消費，可在有歧義時主動確認日期；若使用者已明確更正，直接以使用者指定日期更新 CSV，不要堅持系統預設日期。
+
+### Metadata
+- Source: user_feedback
+- Related Files: /home/node/.openclaw/workspace/expenses/2026-04.csv, /home/node/.openclaw/workspace/.learnings/LEARNINGS.md
+- Tags: expense, date, timezone, correction
+
+---

@@ -703,6 +703,34 @@ For multi-step expense logging flows that mix dynamic strings and message sendin
 - Related Files: /home/node/.openclaw/workspace/skills/expense-tracker/SKILL.md, /home/node/.openclaw/workspace/.learnings/ERRORS.md
 
 ---
+## [ERR-20260404-002] expense_tracker_multi_reminder_exec_timeout
+
+**Logged**: 2026-04-04T16:09:00Z
+**Priority**: low
+**Status**: pending
+**Area**: infra
+
+### Summary
+Batching multiple expense reminder sends in one `exec` hit the timeout before all reminder bot messages finished sending.
+
+### Error
+```
+Command timed out after 60 seconds. If this command is expected to take longer, re-run with a higher timeout (e.g., exec timeout=300).
+```
+
+### Context
+- Operation attempted: append 3 expense rows and send 3 Telegram reminder-bot notifications in one `bash -lc` exec
+- The first two reminder sends completed (`Message ID: 356`, `357`), but the third had to be retried separately
+- The underlying reminder path (`send-reminder.sh` -> `openclaw message send`) can take tens of seconds per send in this environment
+
+### Suggested Fix
+When recording multiple expenses at once, either split reminder sends into smaller exec calls or give the batch exec a much longer timeout (for example 120s-180s) before assuming it is stuck.
+
+### Metadata
+- Reproducible: unknown
+- Related Files: /home/node/.openclaw/workspace/skills/expense-tracker/scripts/send-reminder.sh, /home/node/.openclaw/workspace/.learnings/ERRORS.md
+
+---
 ## [ERR-20260404-001] openclaw_plugin_install_archive_conflicts_existing_id
 
 **Logged**: 2026-04-04T05:08:00Z

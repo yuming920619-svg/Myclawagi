@@ -6,7 +6,6 @@
 - 回覆格式：先 3 行重點 + 短摘要，細節放附件/PDF
 - 若指定安裝某個 ClawHub skill，偏好完整安裝不要遺漏；若 `clawhub install` 受 rate limit 或其他限制，可接受改用手動下載/解包安裝
 - 專題討論輸入偏好：若希望評論更有深度，PPT 截圖比只有題目更有幫助；封面可作背景，但最好再附方法頁、結果頁或結論頁
-- 主力個人電腦作業系統：Windows
 - ChatGPT 訂閱：每月 22 日續訂；已設定每月 21 日 09:00（Asia/Taipei）前一天提醒（reminder bot）
 - Claude 訂閱：每月 14 日續訂；已設定每月 13 日 09:00（Asia/Taipei）前一天提醒（reminder bot）
 
@@ -23,7 +22,7 @@
 - OpenClaw 可同時配置 `openai` API key 與 `openai-codex` OAuth / subscription，兩者不互斥；但 `openai-codex/*` 模型不會自動改吃 `openai` API key，若 Codex 認證失效需獨立重新登入
 - 可切換模型：openai-codex/gpt-5.3-codex、openai-codex/gpt-5.4、openai/gpt-5-mini（alias: `gpt-mini`）、anthropic/claude-opus-4-6、anthropic/claude-sonnet-4-5、anthropic/claude-sonnet-4-6
 - Browser 功能已啟用；目前雲端主機未安裝 Chromium/Chrome，因此 `openclaw` 托管瀏覽器暫時無法直接啟動，但 remote browser sandbox / Remote CDP 已實測可用
-- 通知通道：Telegram 正常；LINE 目前仍維持停用，已知原因是 plugin crash（`Cannot redefine property: isSenderAllowed`；至少在 OpenClaw `2026.3.22`、`2026.3.23` 曾確認受影響）；Discord 不作為溝通工具或備援通道規劃。補充：目前有部分舊 cron 名稱仍保留「(LINE)」，但實際 delivery 已改走 Telegram reminder bot。
+- 通知通道：Telegram 正常；LINE 目前仍維持停用，已知原因是 plugin crash（`Cannot redefine property: isSenderAllowed`；至少在 OpenClaw `2026.3.22`、`2026.3.23` 曾確認受影響）。部分舊 cron 名稱仍保留「(LINE)」，但實際 delivery 已改走 Telegram reminder bot。
 - Memory search 已可用（2026-03-19 實測可回傳結果）；若結果弱、空白或暫時不可用，仍可由 `skills/memory-retrieval` 的 lexical fallback 補強
 - 已建立自我迭代踩坑系統（`skills/pitfall-loop` + `memory/pitfalls.jsonl` + 每週回顧 cron）
 
@@ -47,7 +46,7 @@
 ## 定期任務（Cron）
 - 每日 07:30 (UTC+8)：台北天氣提醒
 - 每日 08:40 (Asia/Taipei)：防曬提醒 → reminder bot
-- 天堂W BOSS/活動提醒：多個每日+每週排程，含 LINE 備援版
+- 天堂W BOSS/活動提醒：多個每日+每週排程（仍可能保留舊 LINE 命名，但實際通知以 Telegram reminder bot 為主）
 - 記帳週報：每週日 21:00 (Asia/Taipei) → reminder bot
 - 記帳月報：每月 1 號 09:00 (Asia/Taipei) → reminder bot
 - 記帳資料同步 GitHub：每天 23:30 (Asia/Taipei)
