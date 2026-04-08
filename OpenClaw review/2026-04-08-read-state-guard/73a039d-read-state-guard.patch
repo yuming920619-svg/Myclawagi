@@ -1,0 +1,935 @@
+From 73a039d11f68500aa6c90e296932585cd7a1555c Mon Sep 17 00:00:00 2001
+From: Vega <vega@local>
+Date: Wed, 8 Apr 2026 13:27:50 +0000
+Subject: [PATCH] feat(agents): guard edits with prior full reads
+
+---
+ .../openclaw-runtime-first-adaptation.md      | 205 +++++++++++++++
+ src/agents/pi-tools.read.ts                   |  55 +---
+ src/agents/pi-tools.ts                        |  73 +++++-
+ src/agents/tool-path-resolution.ts            |  55 ++++
+ src/agents/tool-read-state.test.ts            | 188 ++++++++++++++
+ src/agents/tool-read-state.ts                 | 241 ++++++++++++++++++
+ 6 files changed, 750 insertions(+), 67 deletions(-)
+ create mode 100644 docs/refactor/openclaw-runtime-first-adaptation.md
+ create mode 100644 src/agents/tool-path-resolution.ts
+ create mode 100644 src/agents/tool-read-state.test.ts
+ create mode 100644 src/agents/tool-read-state.ts
+
+diff --git a/docs/refactor/openclaw-runtime-first-adaptation.md b/docs/refactor/openclaw-runtime-first-adaptation.md
+new file mode 100644
+index 0000000..536c5f7
+--- /dev/null
++++ b/docs/refactor/openclaw-runtime-first-adaptation.md
+@@ -0,0 +1,205 @@
++---
++summary: "Map the user-provided OpenClaw optimization spec onto the current upstream architecture, and define an incremental landing plan."
++title: "Runtime-first Adaptation Plan"
++---
++
++# Runtime-first Adaptation Plan
++
++這份文件把使用者提供的 `openclaw_impl_spec`，對齊到目前 OpenClaw upstream 骨架，而不是直接把 Claude Code 風格結構硬貼進來。
++
++## 先講結論
++
++這份 spec 裡有三類東西：
++
++1. **可以直接落地到現有骨架**
++   - read-before-edit / stale file guard
++   - tool metadata / path resolution 抽象
++   - 某些 shell command classification helper
++2. **概念已存在，但現有 OpenClaw 版本做得更完整**
++   - session transcript / compaction / memory flush
++   - skills catalog / availability prompt / workspace sync
++   - tool-result truncation / context guard
++   - subagent depth / tool policy / sandbox policy
++3. **不能直接照搬，必須做 adapter**
++   - batched `executeToolCalls()`：現有 runtime 是 Pi tool loop，不是 caller-side batch executor
++   - declarative `AgentSpec`：現有 agent/config/runtime 入口較分散，要考慮 `openclaw.json`、session overrides、ACP、sandbox
++   - `runSkill()` 的 inline/fork 二分：現有 skills 已包含 frontmatter、visibility、workspace sync、runtime prompt build，不能倒退成單一 prompt-template runner
++
++## 對照表
++
++### 1) Tool contract / tool executor
++
++Spec:
++
++- `src/runtime/tool-contract.ts`
++- `src/runtime/tool-executor.ts`
++
++現況對應：
++
++- `src/agents/pi-tools.ts`
++- `src/agents/pi-tool-definition-adapter.ts`
++- `src/agents/pi-tools.policy.ts`
++- `src/agents/pi-tools.before-tool-call.ts`
++- `src/agents/session-tool-result-guard.ts`
++
++結論：
++
++- **Tool definition metadata** 值得引入，但應該作為現有 `AnyAgentTool` 的 sidecar/adapter，而不是替換整個 tool pipeline。
++- **Batch executor** 目前不適合直接接主路徑，因為 OpenClaw 主路徑是 provider-driven tool loop。
++- 正確做法是先把「tool 行為資訊」抽出，再決定哪些 runtime/agent path 要消費它。
++
++### 2) Safe file edit
++
++Spec:
++
++- `src/tools/file-edit.ts`
++
++現況對應：
++
++- `src/agents/pi-tools.read.ts`
++- `src/agents/pi-tools.host-edit.ts`
++- `src/agents/pi-tools.ts`
++
++結論：
++
++- 這是目前最適合先落地的部分。
++- OpenClaw 已經有 edit recovery，但缺少 **「先完整 read 才能 edit」** 與 **「讀完後檔案不可被外部改掉」** 的 runtime guard。
++- 已先用 `tool-read-state.ts` + `tool-path-resolution.ts` 補上這層，並接到 `createOpenClawCodingTools()` 的 read/edit 建構流程。
++
++### 3) Agent schema
++
++Spec:
++
++- `src/agents/schema.ts`
++
++現況對應：
++
++- `src/config/config.ts`
++- `src/config/schema.ts`
++- `src/agents/agent-scope.ts`
++- `src/agents/pi-tools.ts`
++- `src/agents/openclaw-tools.ts`
++- `src/acp/*`
++
++結論：
++
++- 現有 OpenClaw 的 agent 能力不是只有「model + tools + prompt」而已，還牽涉：
++  - session-scoped overrides
++  - auth profile
++  - sandbox
++  - ACP harness/session thread
++  - skills filter
++  - tool policies by agent/provider/group/subagent
++- 所以如果要引入 declarative agent spec，建議先做成 **overlay format**，映射到現有 config/runtime，而不是再造一個平行 agent runtime。
++
++### 4) Skills runner
++
++Spec:
++
++- `src/skills/run-skill.ts`
++
++現況對應：
++
++- `src/agents/skills/*`
++- `src/agents/openclaw-tools.ts`（`sessions_spawn` / subagent related）
++
++結論：
++
++- 現有 skills 不只是 prompt template，還包含：
++  - frontmatter
++  - visibility / invocation policy
++  - workspace / bundled / managed / plugin skill merge
++  - prompt compaction / truncation policy
++- 若要吸收 spec 的 `inline | fork` 概念，應把它視為 **skill dispatch hint**，不是取代現有 skill loader。
++
++## 已落地的第一步
++
++本次先把最有價值、也最不容易跟現有骨架衝突的部分接進去：
++
++- `src/agents/tool-path-resolution.ts`
++  - 抽出 tool path mapping，避免 read/edit guard 重複實作 container-workdir 對映邏輯
++- `src/agents/tool-read-state.ts`
++  - 記錄本次 run 內完整 read 的檔案內容與 hash
++  - partial read（`offset` / `limit` / truncation）只會記成 partial view
++  - edit 前若未完整讀取，直接擋下
++  - edit 前若檔案 hash 改變，直接擋下
++  - edit 成功後刷新 read state
++- `src/agents/pi-tools.ts`
++  - 在 host / sandbox read tool 上掛入 read-state tracking
++  - 在 host / sandbox edit tool 上掛入 read-state guard
++
++這一版的 read-state 是 **run-scoped**，不是跨 session transcript persisted state。這是刻意的：先把安全語義接到現有 tool loop，而不要一開始就把 session persistence 複雜度一起拉進來。
++
++## 下一步建議順序
++
++### P1 — Tool metadata sidecar
++
++新增一層 adapter，例如：
++
++- `toolBehavior.readOnly`
++- `toolBehavior.concurrencySafe`
++- `toolBehavior.destructive`
++- `toolBehavior.permissionClass`
++
++先不要改主 executor，只讓：
++
++- commentary / approval copy
++- future orchestration / flow runtimes
++- test assertions
++
++開始讀這層 metadata。
++
++### P2 — Shell command classifier
++
++把 spec 對 shell command 的分類吸收到現有 `bash-tools`：
++
++- read-only vs write-capable vs destructive
++- 是否需要 approval 強化
++- 是否可進 parallel lane（只有真正 read-only 才行）
++
++### P3 — Declarative agent overlay
++
++新增一個薄的 declarative format，最後還是編譯/映射到現有：
++
++- config schema
++- tool allowlist/policy
++- skills filter
++- ACP / sandbox setup
++
++而不是重新發明另一條 agent runtime。
++
++### P4 — Skill dispatch hints
++
++把 `inline` / `fork` 加到 skill metadata/frontmatter，作為：
++
++- caller 建議
++- `sessions_spawn` 預設策略 hint
++- prompt builder 額外訊號
++
++但不取代目前的 skill loader / availability prompt。
++
++## 不建議直接做的事
++
++- 不建議現在就把 `executeToolCalls()` 的 batch model 接到主 tool loop
++- 不建議把 skills 降級回 prompt-template runner
++- 不建議建立第二套 agent schema 並與 `openclaw.json` 平行存在卻無映射規則
++- 不建議在沒有 session persistence 設計前，就把 read-state 寫進 transcripts / sessions.json
++
++## 驗證方式
++
++本次先做輕量驗證：
++
++- `tool-read-state.ts` 有單元測試檔：`src/agents/tool-read-state.test.ts`
++- 已做 smoke check：
++  - wrapper-level read/edit state flow
++  - `pi-tools.ts` 可成功 import
++  - `createOpenClawCodingTools()` 可成功產生 read/edit tools
++
++若要正式提交，建議在完整 dev environment 補跑：
++
++```bash
++pnpm install
++pnpm exec vitest run src/agents/tool-read-state.test.ts
++pnpm exec vitest run src/agents/pi-tools.read.host-edit-recovery.test.ts
++pnpm exec vitest run src/agents/pi-tools.read.host-edit-access.test.ts
++```
+diff --git a/src/agents/pi-tools.read.ts b/src/agents/pi-tools.read.ts
+index 91050b2..2f39362 100644
+--- a/src/agents/pi-tools.read.ts
++++ b/src/agents/pi-tools.read.ts
+@@ -9,7 +9,6 @@ import {
+   readFileWithinRoot,
+   writeFileWithinRoot,
+ } from "../infra/fs-safe.js";
+-import { trySafeFileURLToPath } from "../infra/local-file-access.js";
+ import { detectMime } from "../media/mime.js";
+ import { sniffMimeFromBase64 } from "../media/sniff-mime-from-base64.js";
+ import type { ImageSanitizationLimits } from "./image-sanitization.js";
+@@ -25,6 +24,7 @@ import type { AnyAgentTool } from "./pi-tools.types.js";
+ import { assertSandboxPath } from "./sandbox-paths.js";
+ import type { SandboxFsBridge } from "./sandbox/fs-bridge.js";
+ import { sanitizeToolResultImages } from "./tool-images.js";
++import { resolveToolPathAgainstWorkspaceRoot } from "./tool-path-resolution.js";
+ 
+ export {
+   REQUIRED_PARAM_GROUPS,
+@@ -353,59 +353,6 @@ export function wrapToolWorkspaceRootGuard(tool: AnyAgentTool, root: string): An
+   return wrapToolWorkspaceRootGuardWithOptions(tool, root);
+ }
+ 
+-function mapContainerPathToWorkspaceRoot(params: {
+-  filePath: string;
+-  root: string;
+-  containerWorkdir?: string;
+-}): string {
+-  const containerWorkdir = params.containerWorkdir?.trim();
+-  if (!containerWorkdir) {
+-    return params.filePath;
+-  }
+-  const normalizedWorkdir = containerWorkdir.replace(/\\/g, "/").replace(/\/+$/, "");
+-  if (!normalizedWorkdir.startsWith("/")) {
+-    return params.filePath;
+-  }
+-  if (!normalizedWorkdir) {
+-    return params.filePath;
+-  }
+-
+-  let candidate = params.filePath.startsWith("@") ? params.filePath.slice(1) : params.filePath;
+-  if (/^file:\/\//i.test(candidate)) {
+-    const localFilePath = trySafeFileURLToPath(candidate);
+-    if (!localFilePath) {
+-      return params.filePath;
+-    }
+-    candidate = localFilePath;
+-  }
+-
+-  const normalizedCandidate = candidate.replace(/\\/g, "/");
+-  if (normalizedCandidate === normalizedWorkdir) {
+-    return path.resolve(params.root);
+-  }
+-  const prefix = `${normalizedWorkdir}/`;
+-  if (!normalizedCandidate.startsWith(prefix)) {
+-    return candidate;
+-  }
+-  const relative = normalizedCandidate.slice(prefix.length);
+-  if (!relative) {
+-    return path.resolve(params.root);
+-  }
+-  return path.resolve(params.root, ...relative.split("/").filter(Boolean));
+-}
+-
+-export function resolveToolPathAgainstWorkspaceRoot(params: {
+-  filePath: string;
+-  root: string;
+-  containerWorkdir?: string;
+-}): string {
+-  const mapped = mapContainerPathToWorkspaceRoot(params);
+-  const candidate = mapped.startsWith("@") ? mapped.slice(1) : mapped;
+-  return path.isAbsolute(candidate)
+-    ? path.resolve(candidate)
+-    : path.resolve(params.root, candidate || ".");
+-}
+-
+ type MemoryFlushAppendOnlyWriteOptions = {
+   root: string;
+   relativePath: string;
+diff --git a/src/agents/pi-tools.ts b/src/agents/pi-tools.ts
+index 734157e..005c98d 100644
+--- a/src/agents/pi-tools.ts
++++ b/src/agents/pi-tools.ts
+@@ -50,6 +50,13 @@ import {
+   wrapToolParamValidation,
+ } from "./pi-tools.read.js";
+ import { cleanToolSchemaForGemini, normalizeToolParameters } from "./pi-tools.schema.js";
++import {
++  createHostReadStateRuntime,
++  createSandboxReadStateRuntime,
++  createToolReadStateStore,
++  wrapEditToolWithReadStateGuard,
++  wrapReadToolWithState,
++} from "./tool-read-state.js";
+ import type { AnyAgentTool } from "./pi-tools.types.js";
+ import type { SandboxContext } from "./sandbox.js";
+ import { createToolFsPolicy, resolveToolFsConfig } from "./tool-fs-policy.js";
+@@ -389,16 +396,32 @@ export function createOpenClawCodingTools(options?: {
+     throw new Error("Sandbox filesystem bridge is unavailable.");
+   }
+   const imageSanitization = resolveImageSanitizationLimits(options?.config);
++  const readFileState = createToolReadStateStore();
++  const hostReadStateRuntime = createHostReadStateRuntime({ root: workspaceRoot });
++  const sandboxReadStateRuntime =
++    sandboxRoot && sandboxFsBridge
++      ? createSandboxReadStateRuntime({
++          root: sandboxRoot,
++          bridge: sandboxFsBridge,
++          containerWorkdir: sandbox?.containerWorkdir,
++        })
++      : undefined;
+ 
+   const base = (codingTools as unknown as AnyAgentTool[]).flatMap((tool) => {
+     if (tool.name === readTool.name) {
+       if (sandboxRoot) {
+-        const sandboxed = createSandboxedReadTool({
+-          root: sandboxRoot,
+-          bridge: sandboxFsBridge!,
+-          modelContextWindowTokens: options?.modelContextWindowTokens,
+-          imageSanitization,
+-        });
++        const sandboxed = wrapReadToolWithState(
++          createSandboxedReadTool({
++            root: sandboxRoot,
++            bridge: sandboxFsBridge!,
++            modelContextWindowTokens: options?.modelContextWindowTokens,
++            imageSanitization,
++          }),
++          {
++            state: readFileState,
++            runtime: sandboxReadStateRuntime!,
++          },
++        );
+         return [
+           workspaceOnly
+             ? wrapToolWorkspaceRootGuardWithOptions(sandboxed, sandboxRoot, {
+@@ -408,10 +431,16 @@ export function createOpenClawCodingTools(options?: {
+         ];
+       }
+       const freshReadTool = createReadTool(workspaceRoot);
+-      const wrapped = createOpenClawReadTool(freshReadTool, {
+-        modelContextWindowTokens: options?.modelContextWindowTokens,
+-        imageSanitization,
+-      });
++      const wrapped = wrapReadToolWithState(
++        createOpenClawReadTool(freshReadTool, {
++          modelContextWindowTokens: options?.modelContextWindowTokens,
++          imageSanitization,
++        }),
++        {
++          state: readFileState,
++          runtime: hostReadStateRuntime,
++        },
++      );
+       return [workspaceOnly ? wrapToolWorkspaceRootGuard(wrapped, workspaceRoot) : wrapped];
+     }
+     if (tool.name === "bash" || tool.name === execToolName) {
+@@ -428,7 +457,13 @@ export function createOpenClawCodingTools(options?: {
+       if (sandboxRoot) {
+         return [];
+       }
+-      const wrapped = createHostWorkspaceEditTool(workspaceRoot, { workspaceOnly });
++      const wrapped = wrapEditToolWithReadStateGuard(
++        createHostWorkspaceEditTool(workspaceRoot, { workspaceOnly }),
++        {
++          state: readFileState,
++          runtime: hostReadStateRuntime,
++        },
++      );
+       return [workspaceOnly ? wrapToolWorkspaceRootGuard(wrapped, workspaceRoot) : wrapped];
+     }
+     return [tool];
+@@ -495,13 +530,25 @@ export function createOpenClawCodingTools(options?: {
+         ? [
+             workspaceOnly
+               ? wrapToolWorkspaceRootGuardWithOptions(
+-                  createSandboxedEditTool({ root: sandboxRoot, bridge: sandboxFsBridge! }),
++                  wrapEditToolWithReadStateGuard(
++                    createSandboxedEditTool({ root: sandboxRoot, bridge: sandboxFsBridge! }),
++                    {
++                      state: readFileState,
++                      runtime: sandboxReadStateRuntime!,
++                    },
++                  ),
+                   sandboxRoot,
+                   {
+                     containerWorkdir: sandbox.containerWorkdir,
+                   },
+                 )
+-              : createSandboxedEditTool({ root: sandboxRoot, bridge: sandboxFsBridge! }),
++              : wrapEditToolWithReadStateGuard(
++                  createSandboxedEditTool({ root: sandboxRoot, bridge: sandboxFsBridge! }),
++                  {
++                    state: readFileState,
++                    runtime: sandboxReadStateRuntime!,
++                  },
++                ),
+             workspaceOnly
+               ? wrapToolWorkspaceRootGuardWithOptions(
+                   createSandboxedWriteTool({ root: sandboxRoot, bridge: sandboxFsBridge! }),
+diff --git a/src/agents/tool-path-resolution.ts b/src/agents/tool-path-resolution.ts
+new file mode 100644
+index 0000000..71b2c25
+--- /dev/null
++++ b/src/agents/tool-path-resolution.ts
+@@ -0,0 +1,55 @@
++import path from "node:path";
++import { trySafeFileURLToPath } from "../infra/local-file-access.js";
++
++function mapContainerPathToWorkspaceRoot(params: {
++  filePath: string;
++  root: string;
++  containerWorkdir?: string;
++}): string {
++  const containerWorkdir = params.containerWorkdir?.trim();
++  if (!containerWorkdir) {
++    return params.filePath;
++  }
++  const normalizedWorkdir = containerWorkdir.replace(/\\/g, "/").replace(/\/+$/, "");
++  if (!normalizedWorkdir.startsWith("/")) {
++    return params.filePath;
++  }
++  if (!normalizedWorkdir) {
++    return params.filePath;
++  }
++
++  let candidate = params.filePath.startsWith("@") ? params.filePath.slice(1) : params.filePath;
++  if (/^file:\/\//i.test(candidate)) {
++    const localFilePath = trySafeFileURLToPath(candidate);
++    if (!localFilePath) {
++      return params.filePath;
++    }
++    candidate = localFilePath;
++  }
++
++  const normalizedCandidate = candidate.replace(/\\/g, "/");
++  if (normalizedCandidate === normalizedWorkdir) {
++    return path.resolve(params.root);
++  }
++  const prefix = `${normalizedWorkdir}/`;
++  if (!normalizedCandidate.startsWith(prefix)) {
++    return candidate;
++  }
++  const relative = normalizedCandidate.slice(prefix.length);
++  if (!relative) {
++    return path.resolve(params.root);
++  }
++  return path.resolve(params.root, ...relative.split("/").filter(Boolean));
++}
++
++export function resolveToolPathAgainstWorkspaceRoot(params: {
++  filePath: string;
++  root: string;
++  containerWorkdir?: string;
++}): string {
++  const mapped = mapContainerPathToWorkspaceRoot(params);
++  const candidate = mapped.startsWith("@") ? mapped.slice(1) : mapped;
++  return path.isAbsolute(candidate)
++    ? path.resolve(candidate)
++    : path.resolve(params.root, candidate || ".");
++}
+diff --git a/src/agents/tool-read-state.test.ts b/src/agents/tool-read-state.test.ts
+new file mode 100644
+index 0000000..87b80f3
+--- /dev/null
++++ b/src/agents/tool-read-state.test.ts
+@@ -0,0 +1,188 @@
++import fs from "node:fs/promises";
++import os from "node:os";
++import path from "node:path";
++import type { AgentToolResult } from "@mariozechner/pi-agent-core";
++import { afterEach, describe, expect, it } from "vitest";
++import type { AnyAgentTool } from "./pi-tools.types.js";
++import {
++  createHostReadStateRuntime,
++  createToolReadStateStore,
++  wrapEditToolWithReadStateGuard,
++  wrapReadToolWithState,
++} from "./tool-read-state.js";
++
++function textResult(text: string, details?: unknown): AgentToolResult<unknown> {
++  return {
++    content: [{ type: "text" as const, text }],
++    ...(details === undefined ? {} : { details }),
++  } as AgentToolResult<unknown>;
++}
++
++function createTool(params: {
++  name: string;
++  execute: AnyAgentTool["execute"];
++}): AnyAgentTool {
++  return {
++    name: params.name,
++    description: `${params.name} test tool`,
++    parameters: { type: "object", properties: {} },
++    execute: params.execute,
++  } as unknown as AnyAgentTool;
++}
++
++describe("tool read-state guards", () => {
++  let tmpDir = "";
++
++  afterEach(async () => {
++    if (tmpDir) {
++      await fs.rm(tmpDir, { recursive: true, force: true });
++      tmpDir = "";
++    }
++  });
++
++  async function setupFile(initialContent: string) {
++    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-read-state-"));
++    const filePath = path.join(tmpDir, "demo.txt");
++    await fs.writeFile(filePath, initialContent, "utf8");
++    return { filePath };
++  }
++
++  it("tracks a full read and refreshes state after a successful edit", async () => {
++    const { filePath } = await setupFile("alpha beta\n");
++    const state = createToolReadStateStore();
++    const runtime = createHostReadStateRuntime({ root: tmpDir });
++
++    const readTool = wrapReadToolWithState(
++      createTool({
++        name: "read",
++        execute: async () => textResult("alpha beta\n"),
++      }),
++      { state, runtime },
++    );
++    const editTool = wrapEditToolWithReadStateGuard(
++      createTool({
++        name: "edit",
++        execute: async () => {
++          await fs.writeFile(filePath, "alpha gamma\n", "utf8");
++          return textResult("edited");
++        },
++      }),
++      { state, runtime },
++    );
++
++    await readTool.execute("read-1", { path: "demo.txt" }, undefined);
++    expect(state.get(filePath)).toMatchObject({
++      isPartialView: false,
++      content: "alpha beta\n",
++    });
++
++    await expect(
++      editTool.execute(
++        "edit-1",
++        { path: "demo.txt", edits: [{ oldText: "beta", newText: "gamma" }] },
++        undefined,
++      ),
++    ).resolves.toMatchObject({
++      content: [{ type: "text", text: "edited" }],
++    });
++
++    expect(await fs.readFile(filePath, "utf8")).toBe("alpha gamma\n");
++    expect(state.get(filePath)).toMatchObject({
++      isPartialView: false,
++      content: "alpha gamma\n",
++    });
++  });
++
++  it("rejects edits when the file was not fully read first", async () => {
++    const { filePath } = await setupFile("alpha beta\n");
++    const state = createToolReadStateStore();
++    const runtime = createHostReadStateRuntime({ root: tmpDir });
++    const editTool = wrapEditToolWithReadStateGuard(
++      createTool({
++        name: "edit",
++        execute: async () => textResult("edited"),
++      }),
++      { state, runtime },
++    );
++
++    await expect(
++      editTool.execute(
++        "edit-1",
++        { path: filePath, edits: [{ oldText: "beta", newText: "gamma" }] },
++        undefined,
++      ),
++    ).rejects.toThrow("File must be fully read before editing");
++  });
++
++  it("marks limited reads as partial and blocks subsequent edits", async () => {
++    const { filePath } = await setupFile("alpha beta\n");
++    const state = createToolReadStateStore();
++    const runtime = createHostReadStateRuntime({ root: tmpDir });
++    const readTool = wrapReadToolWithState(
++      createTool({
++        name: "read",
++        execute: async () =>
++          textResult("alpha\n", {
++            truncation: {
++              truncated: true,
++              outputLines: 1,
++              firstLineExceedsLimit: false,
++            },
++          }),
++      }),
++      { state, runtime },
++    );
++    const editTool = wrapEditToolWithReadStateGuard(
++      createTool({
++        name: "edit",
++        execute: async () => textResult("edited"),
++      }),
++      { state, runtime },
++    );
++
++    await readTool.execute("read-1", { path: "demo.txt", limit: 1 }, undefined);
++    expect(state.get(filePath)).toMatchObject({
++      isPartialView: true,
++      limit: 1,
++    });
++
++    await expect(
++      editTool.execute(
++        "edit-1",
++        { path: "demo.txt", edits: [{ oldText: "beta", newText: "gamma" }] },
++        undefined,
++      ),
++    ).rejects.toThrow("File must be fully read before editing");
++  });
++
++  it("rejects edits when the file changed after the last full read", async () => {
++    const { filePath } = await setupFile("alpha beta\n");
++    const state = createToolReadStateStore();
++    const runtime = createHostReadStateRuntime({ root: tmpDir });
++    const readTool = wrapReadToolWithState(
++      createTool({
++        name: "read",
++        execute: async () => textResult("alpha beta\n"),
++      }),
++      { state, runtime },
++    );
++    const editTool = wrapEditToolWithReadStateGuard(
++      createTool({
++        name: "edit",
++        execute: async () => textResult("edited"),
++      }),
++      { state, runtime },
++    );
++
++    await readTool.execute("read-1", { path: "demo.txt" }, undefined);
++    await fs.writeFile(filePath, "alpha delta\n", "utf8");
++
++    await expect(
++      editTool.execute(
++        "edit-1",
++        { path: "demo.txt", edits: [{ oldText: "delta", newText: "gamma" }] },
++        undefined,
++      ),
++    ).rejects.toThrow("File changed since last read");
++  });
++});
+diff --git a/src/agents/tool-read-state.ts b/src/agents/tool-read-state.ts
+new file mode 100644
+index 0000000..7d0e109
+--- /dev/null
++++ b/src/agents/tool-read-state.ts
+@@ -0,0 +1,241 @@
++import { createHash } from "node:crypto";
++import fs from "node:fs/promises";
++import type {
++  AgentToolResult,
++  AgentToolUpdateCallback,
++} from "@mariozechner/pi-agent-core";
++import type { AnyAgentTool } from "./pi-tools.types.js";
++import { getToolParamsRecord } from "./pi-tools.params.js";
++import type { SandboxFsBridge } from "./sandbox/fs-bridge.js";
++import { resolveToolPathAgainstWorkspaceRoot } from "./tool-path-resolution.js";
++
++export type ReadState = {
++  content: string;
++  timestamp: number;
++  offset?: number;
++  limit?: number;
++  isPartialView?: boolean;
++  contentHash?: string;
++};
++
++export type ToolReadStateStore = Map<string, ReadState>;
++
++type ReadStatePathOptions = {
++  root: string;
++  containerWorkdir?: string;
++};
++
++type ReadStateRuntime = ReadStatePathOptions & {
++  readFileUtf8: (absolutePath: string, signal?: AbortSignal) => Promise<string>;
++};
++
++function sha256(input: string): string {
++  return createHash("sha256").update(input).digest("hex");
++}
++
++function readStringParam(record: Record<string, unknown> | undefined, ...keys: string[]) {
++  for (const key of keys) {
++    const value = record?.[key];
++    if (typeof value === "string" && value.trim()) {
++      return value;
++    }
++  }
++  return undefined;
++}
++
++function readNumberParam(record: Record<string, unknown> | undefined, ...keys: string[]) {
++  for (const key of keys) {
++    const value = record?.[key];
++    if (typeof value === "number" && Number.isFinite(value)) {
++      return value;
++    }
++    if (typeof value === "string" && value.trim()) {
++      const parsed = Number(value);
++      if (Number.isFinite(parsed)) {
++        return parsed;
++      }
++    }
++  }
++  return undefined;
++}
++
++function resolveFilePathParam(record: Record<string, unknown> | undefined): string | undefined {
++  return readStringParam(record, "path", "filePath", "file_path", "file");
++}
++
++function hasImageContent(result: AgentToolResult<unknown>): boolean {
++  const content = Array.isArray(result.content) ? result.content : [];
++  return content.some(
++    (block) =>
++      !!block && typeof block === "object" && (block as { type?: unknown }).type === "image",
++  );
++}
++
++function isReadResultPartial(
++  result: AgentToolResult<unknown>,
++  params: { offset?: number; limit?: number },
++): boolean {
++  if (params.offset !== undefined || params.limit !== undefined) {
++    return true;
++  }
++  const details = (result as { details?: unknown }).details;
++  if (!details || typeof details !== "object") {
++    return false;
++  }
++  const truncation = (details as { truncation?: unknown }).truncation;
++  if (!truncation || typeof truncation !== "object") {
++    return false;
++  }
++  return (truncation as { truncated?: unknown }).truncated === true;
++}
++
++function buildReadState(content: string, params?: { offset?: number; limit?: number }): ReadState {
++  return {
++    content,
++    timestamp: Date.now(),
++    offset: params?.offset,
++    limit: params?.limit,
++    isPartialView: false,
++    contentHash: sha256(content),
++  };
++}
++
++function buildPartialReadState(params?: { offset?: number; limit?: number }): ReadState {
++  return {
++    content: "",
++    timestamp: Date.now(),
++    offset: params?.offset,
++    limit: params?.limit,
++    isPartialView: true,
++  };
++}
++
++export function createToolReadStateStore(): ToolReadStateStore {
++  return new Map<string, ReadState>();
++}
++
++export function createHostReadStateRuntime(params: ReadStatePathOptions): ReadStateRuntime {
++  return {
++    ...params,
++    readFileUtf8: async (absolutePath) => await fs.readFile(absolutePath, "utf8"),
++  };
++}
++
++export function createSandboxReadStateRuntime(params: {
++  root: string;
++  bridge: SandboxFsBridge;
++  containerWorkdir?: string;
++}): ReadStateRuntime {
++  return {
++    root: params.root,
++    containerWorkdir: params.containerWorkdir,
++    readFileUtf8: async (absolutePath, signal) =>
++      (
++        await params.bridge.readFile({
++          filePath: absolutePath,
++          cwd: params.root,
++          signal,
++        })
++      ).toString("utf8"),
++  };
++}
++
++export function wrapReadToolWithState(
++  tool: AnyAgentTool,
++  params: {
++    state: ToolReadStateStore;
++    runtime: ReadStateRuntime;
++  },
++): AnyAgentTool {
++  return {
++    ...tool,
++    execute: async (
++      toolCallId: string,
++      rawParams: unknown,
++      signal: AbortSignal | undefined,
++      onUpdate?: AgentToolUpdateCallback<unknown>,
++    ) => {
++      const result = (await tool.execute(
++        toolCallId,
++        rawParams,
++        signal,
++        onUpdate,
++      )) as AgentToolResult<unknown>;
++
++      const record = getToolParamsRecord(rawParams);
++      const filePath = resolveFilePathParam(record);
++      if (!filePath) {
++        return result;
++      }
++
++      const absolutePath = resolveToolPathAgainstWorkspaceRoot({
++        filePath,
++        root: params.runtime.root,
++        containerWorkdir: params.runtime.containerWorkdir,
++      });
++      if (hasImageContent(result)) {
++        params.state.delete(absolutePath);
++        return result;
++      }
++      const offset = readNumberParam(record, "offset");
++      const limit = readNumberParam(record, "limit");
++
++      if (isReadResultPartial(result, { offset, limit })) {
++        params.state.set(absolutePath, buildPartialReadState({ offset, limit }));
++        return result;
++      }
++
++      try {
++        const content = await params.runtime.readFileUtf8(absolutePath, signal);
++        params.state.set(absolutePath, buildReadState(content, { offset, limit }));
++      } catch {
++        params.state.delete(absolutePath);
++      }
++      return result;
++    },
++  };
++}
++
++export function wrapEditToolWithReadStateGuard(
++  tool: AnyAgentTool,
++  params: {
++    state: ToolReadStateStore;
++    runtime: ReadStateRuntime;
++  },
++): AnyAgentTool {
++  return {
++    ...tool,
++    execute: async (
++      toolCallId: string,
++      rawParams: unknown,
++      signal: AbortSignal | undefined,
++      onUpdate?: AgentToolUpdateCallback<unknown>,
++    ) => {
++      const record = getToolParamsRecord(rawParams);
++      const filePath = resolveFilePathParam(record);
++      if (!filePath) {
++        return await tool.execute(toolCallId, rawParams, signal, onUpdate);
++      }
++
++      const absolutePath = resolveToolPathAgainstWorkspaceRoot({
++        filePath,
++        root: params.runtime.root,
++        containerWorkdir: params.runtime.containerWorkdir,
++      });
++      const lastRead = params.state.get(absolutePath);
++      if (!lastRead || lastRead.isPartialView) {
++        throw new Error("File must be fully read before editing");
++      }
++
++      const currentContent = await params.runtime.readFileUtf8(absolutePath, signal);
++      if (lastRead.contentHash && sha256(currentContent) !== lastRead.contentHash) {
++        throw new Error("File changed since last read");
++      }
++
++      const result = await tool.execute(toolCallId, rawParams, signal, onUpdate);
++      const updatedContent = await params.runtime.readFileUtf8(absolutePath, signal);
++      params.state.set(absolutePath, buildReadState(updatedContent));
++      return result;
++    },
++  };
++}
+-- 
+2.39.5
+
