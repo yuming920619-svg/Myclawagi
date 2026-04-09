@@ -46,7 +46,7 @@
 ## 定期任務（Cron）
 - 每日 07:30 (UTC+8)：台北天氣提醒
 - 每日 08:40 (Asia/Taipei)：防曬提醒 → reminder bot
-- 天堂W BOSS/活動提醒：多個每日+每週排程（仍可能保留舊 LINE 命名，但實際通知以 Telegram reminder bot 為主）
+- 天堂W BOSS/活動提醒：已於 2026-04-09 全數停用（使用者目前已不玩；若之後回鍋再重開）
 - 記帳週報：每週日 21:00 (Asia/Taipei) → reminder bot
 - 記帳月報：每月 1 號 09:00 (Asia/Taipei) → reminder bot
 - 記帳資料同步 GitHub：每天 23:30 (Asia/Taipei)

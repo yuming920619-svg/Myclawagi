@@ -821,3 +821,33 @@ When sending multiline scripts through `bash -lc '...'`, avoid nested single-quo
 - Related Files: /home/node/.openclaw/workspace/.learnings/ERRORS.md
 
 ---
+
+## [ERR-20260409-001] cron_disable_id_extraction_from_pretty_list
+
+**Logged**: 2026-04-09T12:26:00Z
+**Priority**: low
+**Status**: pending
+**Area**: infra
+
+### Summary
+A batch disable command for OpenClaw cron jobs incorrectly parsed job IDs from the human-readable `openclaw cron list` output, causing the full line to be passed as the job id.
+
+### Error
+```
+GatewayClientRequestError: Error: unknown cron job id: 6dd1f9c1-2c47-4e0e-a5e7-6ec4e0b9cc42 天堂W BOSS提醒－蜘蛛（提前5分鐘／固... cron 25 17 * * * @ Asia/Taipe... in 21h     3h ago     ok        isolated  -          -
+```
+
+### Context
+- Operation attempted: disable all `天堂W`-related cron jobs in one loop
+- Initial extraction used a regex replacement on the pretty table output from `openclaw cron list`
+- The replacement failed, so the entire line was sent to `openclaw cron disable`
+
+### Suggested Fix
+When extracting ids from `openclaw cron list`, use a table-aware parser such as `awk` on the first field or switch to a machine-readable format if the CLI adds one.
+
+### Metadata
+- Reproducible: yes
+- Related Files: /home/node/.openclaw/workspace/.learnings/ERRORS.md
+- Related Commands: openclaw cron list, openclaw cron disable
+
+---

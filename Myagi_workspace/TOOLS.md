@@ -12,6 +12,9 @@ Keep this file practical. Put only environment-specific notes here.
 - Gateway `exec` 預設 shell 是 `/bin/sh`，不是 bash；若要用 `set -o pipefail`、`[[ ... ]]`、arrays 或其他 bash-only 語法，必須顯式包成 `bash -lc '...'`
 - 只把 Telegram `channels.telegram.accounts.default.execApprovals.enabled` 關掉，**不代表 host exec 真的免批准**；若要回到完全不跳手動批准，還要同步放寬 `~/.openclaw/openclaw.json` 的 `tools.exec`（目前設為 `host=gateway`, `security=full`, `ask=off`）以及 `~/.openclaw/exec-approvals.json`（目前 `defaults/agents.main` 皆為 `security=full`, `ask=off`, `askFallback=full`）
 
+## OpenClaw CLI / Cron
+- 在目前 OpenClaw `2026.4.1`，`openclaw cron disable <id>` 實測可能回 `invalid cron.update params`；若要停用 job，改用 `openclaw cron edit <id> --disable` 比較穩
+
 ## Plugins
 - 本地外掛若放在 `~/.openclaw/extensions/`，檔案權限太寬（例如 `666` / world-writable）會被 OpenClaw 直接 block；可用 `chmod -R go-w <plugin-dir>` 修正
 - 要讓已安裝 plugin 真正被 Gateway 接受，核心 allowlist 看的是 `plugins.allow`，不是 `tools.allow`
