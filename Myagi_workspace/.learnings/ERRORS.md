@@ -789,3 +789,35 @@ When a script needs `pipefail` or other bash features, invoke `bash -lc '...'` e
 - Related Files: TOOLS.md
 
 ---
+
+## [ERR-20260408-001] bash_heredoc_single_quote_collision
+
+**Logged**: 2026-04-08T13:31:00Z
+**Priority**: low
+**Status**: pending
+**Area**: infra
+
+### Summary
+A `bash -lc` script that embedded a quoted heredoc marker inside an already single-quoted shell string broke quoting, causing inline markdown content to be executed as shell commands.
+
+### Error
+```
+bash: line 9: openclaw_impl_spec: command not found
+bash: line 9: 73a039d: command not found
+bash: command substitution: line 9: syntax error near unexpected token `agents'
+```
+
+### Context
+- Operation attempted: create a review README and push a review branch for GitHub inspection
+- The outer command used `bash -lc '...'`
+- Inside it, the heredoc opener used `<<'EOF'`, which prematurely terminated the outer single-quoted shell string
+- The branch commit still succeeded, but the generated README content was partially corrupted and had to be regenerated safely
+
+### Suggested Fix
+When sending multiline scripts through `bash -lc '...'`, avoid nested single-quoted heredoc delimiters inside the same shell string. Prefer `cat <<"EOF"`, write from a temp file, or use a direct file-writing tool.
+
+### Metadata
+- Reproducible: yes
+- Related Files: /home/node/.openclaw/workspace/.learnings/ERRORS.md
+
+---
