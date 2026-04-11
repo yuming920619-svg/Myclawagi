@@ -25,4 +25,4 @@ Generated: 2026-04-11 (UTC)
 - special-topic-discussion
 - token-guard
 
-Each exported folder is copied from the live source directory so GitHub review is easier.
+Export rule: copy skill contents for GitHub review while excluding nested `.git` metadata.
